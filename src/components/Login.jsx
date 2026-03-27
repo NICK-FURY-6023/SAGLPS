@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -15,6 +17,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
+      navigate('/app');
     } catch (err) {
       setError(err?.response?.data?.error || 'Invalid credentials. Please try again.');
     } finally {
@@ -155,6 +158,17 @@ export default function Login() {
           <p style={{ fontSize: 11, color: '#334155' }}>
             © {new Date().getFullYear()} Shree Ganpati Agency · Admin Access Only
           </p>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              style={{ background: 'none', border: 'none', color: '#334155', fontSize: 12, cursor: 'pointer', marginTop: 8, display: 'block', margin: '8px auto 0', transition: 'color 0.15s' }}
+              onMouseOver={e => e.currentTarget.style.color = '#f97316'}
+              onMouseOut={e  => e.currentTarget.style.color = '#334155'}
+            >
+              ← Wapas Home
+            </button>
+          )}
         </div>
       </div>
     </div>
