@@ -270,7 +270,7 @@ export default function Landing() {
           <a href="#specs" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}
             onMouseEnter={e => e.target.style.color = '#f1f5f9'} onMouseLeave={e => e.target.style.color = '#64748b'}>Specs</a>
           <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/app')}
             style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#f97316,#ea580c)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(249,115,22,0.3)' }}>
             Admin Login
           </motion.button>
@@ -303,7 +303,7 @@ export default function Landing() {
 
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <motion.button className="hero-cta" whileHover={{ scale: 1.04, boxShadow: '0 14px 40px rgba(249,115,22,0.45)' }} whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/app')}
                 style={{ opacity: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '14px 30px', background: 'linear-gradient(135deg,#f97316,#ea580c)', border: 'none', borderRadius: 10, color: 'white', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 28px rgba(249,115,22,0.32)' }}>
                 <Icon d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" size={17} color="white" sw={2.2} />
                 Get Started
@@ -492,7 +492,7 @@ export default function Landing() {
               Login to the admin dashboard and start printing professional labels for Shree Ganpati Agency today.
             </p>
             <motion.button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/app')}
               whileHover={{ scale: 1.04, boxShadow: '0 16px 50px rgba(249,115,22,0.45)' }}
               whileTap={{ scale: 0.97 }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 44px', background: 'linear-gradient(135deg,#f97316,#ea580c)', border: 'none', borderRadius: 12, color: 'white', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 8px 30px rgba(249,115,22,0.3)' }}>
