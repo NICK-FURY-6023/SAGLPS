@@ -74,8 +74,22 @@ function CSVImportModal({ onImport, onClose }) {
     const missing = CSV_COLUMNS.filter(c => !header.includes(c));
     if (missing.length) return { error: `Missing columns: ${missing.join(', ')}` };
 
+    // Parse a CSV line respecting quoted fields
+    const parseLine = (line) => {
+      const vals = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuotes = !inQuotes; }
+        else if (ch === ',' && !inQuotes) { vals.push(cur.trim()); cur = ''; }
+        else { cur += ch; }
+      }
+      vals.push(cur.trim());
+      return vals;
+    };
+
     const rows = lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const vals = parseLine(line);
       const obj = {};
       header.forEach((h, i) => { if (CSV_COLUMNS.includes(h)) obj[h] = vals[i] || ''; });
       return { ...emptyLabel(), ...obj };
@@ -146,7 +160,7 @@ function CSVImportModal({ onImport, onClose }) {
           <textarea
             value={text}
             onChange={e => handleText(e.target.value)}
-            placeholder={`product,code,price,size,qty,manufacturer\nBasmati Rice,GR-001,120,1kg,10pcs,Ganpati Foods`}
+            placeholder={`manufacturer,logoUrl,code,product,description,price\nJaquar,,ALD-CHR-070N,Concealed Body Diverter,High quality brass body,3800.00`}
             rows={5}
             style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, color: '#f1f5f9', padding: '10px 12px', fontSize: 12, fontFamily: 'monospace', resize: 'vertical', boxSizing: 'border-box' }}
           />
@@ -276,7 +290,7 @@ export default function Dashboard() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return Array.from({ length: 12 }, (_, i) => parsed[i] || emptyLabel());
+          return Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(parsed[i] || {}) }));
         }
       }
     } catch { /* ignore */ }
@@ -491,7 +505,10 @@ export default function Dashboard() {
         <TemplateManager mode={templateManagerMode} labels={labels} onLoad={handleTemplateLoad} onClose={() => setShowTemplateManager(false)} />
       )}
       {showCSVImport && <CSVImportModal onImport={handleCSVImport} onClose={() => setShowCSVImport(false)} />}
-      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onRestore={(l, n) => { setLabels(l); setCurrentTemplateName(n || ''); toast.success('Labels restored from history'); }} />}
+      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onRestore={(l, n) => {
+        const padded = Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(l[i] || {}) }));
+        setLabels(padded); setCurrentTemplateName(n || ''); toast.success('Labels restored from history');
+      }} />}
     </div>
   );
 }
