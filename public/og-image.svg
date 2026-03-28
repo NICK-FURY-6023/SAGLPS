@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="60%" style="stop-color:#1e1b4b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="saffron" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+    <linearGradient id="labelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#f8fafc"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Radial saffron glow top-right -->
+  <circle cx="1050" cy="80" r="280" fill="#f97316" opacity="0.08"/>
+  <!-- Radial purple glow bottom-left -->
+  <circle cx="150" cy="560" r="200" fill="#7c3aed" opacity="0.07"/>
+
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="1200" height="5" fill="url(#saffron)"/>
+
+  <!-- LEFT SIDE: Branding -->
+  <!-- Logo circle -->
+  <circle cx="120" cy="315" r="64" fill="url(#saffron)" opacity="0.15"/>
+  <circle cx="120" cy="315" r="52" fill="url(#saffron)"/>
+  <!-- Flame icon in logo -->
+  <text x="120" y="330" font-size="42" text-anchor="middle" fill="white">🪔</text>
+
+  <!-- Brand text -->
+  <text x="210" y="290" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#f1f5f9">Shree Ganpati Agency</text>
+  <text x="210" y="335" font-family="Arial,sans-serif" font-size="18" font-weight="500" fill="#f97316" letter-spacing="4">LABEL PRINT SYSTEM v2</text>
+  <text x="210" y="375" font-family="Arial,sans-serif" font-size="15" fill="#64748b">Precision A4 label printing · 12 labels · 105×48mm</text>
+
+  <!-- Divider -->
+  <line x1="200" y1="410" x2="600" y2="410" stroke="#334155" stroke-width="1"/>
+
+  <!-- Feature pills -->
+  <rect x="210" y="430" width="130" height="32" rx="16" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="275" y="451" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">☁️ Supabase</text>
+
+  <rect x="352" y="430" width="130" height="32" rx="16" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="417" y="451" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">🖨️ Print Ready</text>
+
+  <rect x="494" y="430" width="110" height="32" rx="16" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="549" y="451" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">⬇️ PDF Export</text>
+
+  <!-- RIGHT SIDE: Mini A4 sheet preview -->
+  <g filter="url(#shadow)" transform="translate(680, 60)">
+    <!-- A4 sheet -->
+    <rect width="440" height="510" rx="6" fill="url(#labelGrad)"/>
+
+    <!-- Label grid 2x6 -->
+    <!-- Row 1 -->
+    <rect x="8"   y="8"   width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="8"   width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Row 2 -->
+    <rect x="8"   y="92"  width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="92"  width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Row 3 -->
+    <rect x="8"   y="176" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="176" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Row 4 -->
+    <rect x="8"   y="260" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="260" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Row 5 -->
+    <rect x="8"   y="344" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="344" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Row 6 -->
+    <rect x="8"   y="428" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+    <rect x="222" y="428" width="210" height="78" rx="2" fill="white" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <!-- Sample content in first label -->
+    <text x="20" y="27" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#1e293b">GANPATI</text>
+    <text x="20" y="40" font-family="Arial,sans-serif" font-size="7" fill="#64748b">#GR-001</text>
+    <rect x="186" y="14" width="24" height="24" rx="2" fill="#f1f5f9"/>
+    <text x="20" y="58" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#0f172a" text-anchor="start">Basmati Rice Premium</text>
+    <text x="20" y="72" font-family="Arial,sans-serif" font-size="7" fill="#64748b">Size: 1kg  Qty: 10  MRP: ₹120</text>
+    <line x1="14" y1="82" x2="210" y2="82" stroke="#e2e8f0" stroke-width="0.5"/>
+
+    <!-- Saffron highlight on first label -->
+    <rect x="8" y="8" width="4" height="78" rx="2" fill="url(#saffron)"/>
+  </g>
+
+  <!-- Bottom tagline -->
+  <text x="600" y="598" font-family="Arial,sans-serif" font-size="14" fill="#334155" text-anchor="middle">
+    Admin-only · Cloud templates · Exact alignment guaranteed
+  </text>
+</svg>
