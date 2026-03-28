@@ -14,6 +14,7 @@ function LabelCell({ label, fontScale = 1 }) {
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
   const price = label.price?.trim() || '';
+  const logoUrl = label.logoUrl?.trim() || '';
   const s = (pt) => `${pt * fontScale}pt`;
   const B = '0.2mm solid #222';
   const brandInitial = brand ? brand.charAt(0).toUpperCase() : '';
@@ -28,23 +29,28 @@ function LabelCell({ label, fontScale = 1 }) {
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
     }}>
 
-      {/* ── BRAND HEADER ── */}
+      {/* ── BRAND HEADER — logo + name ── */}
       <div style={{
         display: 'flex', alignItems: 'center',
         padding: '1.5mm 2.5mm', borderBottom: B,
-        flexShrink: 0,
+        flexShrink: 0, gap: '2mm',
       }}>
-        {brandInitial && (
+        {logoUrl ? (
+          <img src={logoUrl} alt="" style={{
+            height: '8mm', width: 'auto', maxWidth: '18mm',
+            objectFit: 'contain', flexShrink: 0,
+          }} />
+        ) : brandInitial ? (
           <div style={{
             width: '7mm', height: '7mm', borderRadius: '50%',
             border: '0.3mm solid #222', display: 'flex',
             alignItems: 'center', justifyContent: 'center',
             fontSize: s(11), fontWeight: 900, flexShrink: 0,
-            marginRight: '2mm', lineHeight: 1,
+            lineHeight: 1,
           }}>
             {brandInitial}
           </div>
-        )}
+        ) : null}
         <span style={{
           fontSize: s(13), fontWeight: 700, fontStyle: 'italic',
           fontFamily: 'Georgia, "Times New Roman", serif',
