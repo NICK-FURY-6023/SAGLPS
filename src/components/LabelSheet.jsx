@@ -29,36 +29,27 @@ function LabelCell({ label, fontScale = 1 }) {
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
     }}>
 
-      {/* ── BRAND HEADER — logo + name ── */}
+      {/* ── BRAND HEADER — full logo image or text fallback ── */}
       <div style={{
-        display: 'flex', alignItems: 'center',
-        padding: '1.5mm 2.5mm', borderBottom: B,
-        flexShrink: 0, gap: '2mm',
+        display: 'flex', alignItems: 'center', justifyContent: logoUrl ? 'center' : 'flex-start',
+        padding: '1mm 2.5mm', borderBottom: B,
+        flexShrink: 0, overflow: 'hidden',
       }}>
         {logoUrl ? (
-          <img src={logoUrl} alt="" style={{
-            height: '8mm', width: 'auto', maxWidth: '18mm',
-            objectFit: 'contain', flexShrink: 0,
+          <img src={logoUrl} alt={brand} style={{
+            height: '10mm', maxWidth: '100%',
+            objectFit: 'contain',
           }} />
-        ) : brandInitial ? (
-          <div style={{
-            width: '7mm', height: '7mm', borderRadius: '50%',
-            border: '0.3mm solid #222', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: s(11), fontWeight: 900, flexShrink: 0,
-            lineHeight: 1,
+        ) : (
+          <span style={{
+            fontSize: s(13), fontWeight: 700, fontStyle: 'italic',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            lineHeight: 1.1,
           }}>
-            {brandInitial}
-          </div>
-        ) : null}
-        <span style={{
-          fontSize: s(13), fontWeight: 700, fontStyle: 'italic',
-          fontFamily: 'Georgia, "Times New Roman", serif',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          lineHeight: 1.1,
-        }}>
-          {brand || <span style={{ color: '#ccc', fontStyle: 'normal', fontWeight: 400, fontSize: s(9) }}>Brand Name</span>}
-        </span>
+            {brand || <span style={{ color: '#ccc', fontStyle: 'normal', fontWeight: 400, fontSize: s(9) }}>Brand Name</span>}
+          </span>
+        )}
       </div>
 
       {/* ── PRODUCT DETAILS ── */}
