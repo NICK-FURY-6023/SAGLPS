@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 const FIELDS = [
-  { key: 'manufacturer', label: 'Brand Name',        placeholder: 'e.g. Jaquar',                     span: 2 },
-  { key: 'logoUrl',      label: 'Brand Logo URL',    placeholder: 'Paste logo image URL',            span: 2 },
-  { key: 'code',         label: 'Product Code',      placeholder: 'e.g. ALD-CHR-070N',               span: 1 },
-  { key: 'price',        label: 'Product Price (₹)', placeholder: 'e.g. 3800.00',                    span: 1 },
-  { key: 'product',      label: 'Product Name',      placeholder: 'e.g. Concealed Body Diverter',    span: 2 },
+  { key: 'manufacturer', label: 'Brand Name',          placeholder: 'e.g. Jaquar',                          span: 2 },
+  { key: 'logoUrl',      label: 'Brand Logo URL',      placeholder: 'Paste logo image URL',                 span: 2 },
+  { key: 'code',         label: 'Product Code',        placeholder: 'e.g. ALD-CHR-070N',                    span: 1 },
+  { key: 'price',        label: 'Product Price (₹)',   placeholder: 'e.g. 3800.00',                         span: 1 },
+  { key: 'product',      label: 'Product Name',        placeholder: 'e.g. Concealed Body Diverter',         span: 2 },
+  { key: 'description',  label: 'Product Description', placeholder: 'e.g. High quality brass body diverter', span: 2 },
 ];
 
 const emptyLabel = () => ({
-  product: '', code: '', price: '', manufacturer: '', logoUrl: '',
+  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '',
 });
 const isFilled   = (l) => !!(l.product?.trim() || l.code?.trim() || l.price?.trim());
 

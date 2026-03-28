@@ -1,88 +1,99 @@
 /*
  * Clean product label — 105mm × 48mm
- * ┌──────────────────────────────────────────────────┐
- * │  [J]  Jaquar                                     │
- * │──────────────────────────────────────────────────│
- * │  Product Code  :  ALD-CHR-070N                   │
- * │  Product Name  :  CONCEALED BODY DIVERTER        │
- * │  Product Price :  ₹ 3,800.00                     │
- * └──────────────────────────────────────────────────┘
+ * ┌────────┬─────────────────────────────────────────┐
+ * │        │ Product Code  :  ALD-CHR-070N            │
+ * │ [LOGO] │ Product Name  :  CONCEALED BODY DIVERTER │
+ * │        │ Product Desc  :  High quality brass...   │
+ * │        │ Product Price :  ₹ 3,800.00              │
+ * └────────┴─────────────────────────────────────────┘
  */
 
 function LabelCell({ label, fontScale = 1 }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
+  const description = label.description?.trim() || '';
   const price = label.price?.trim() || '';
   const logoUrl = label.logoUrl?.trim() || '';
   const s = (pt) => `${pt * fontScale}pt`;
   const B = '0.2mm solid #222';
-  const brandInitial = brand ? brand.charAt(0).toUpperCase() : '';
 
   return (
     <div style={{
       width: '100%', height: '100%',
       border: B, boxSizing: 'border-box',
       fontFamily: 'Arial, Helvetica, sans-serif',
-      color: '#000', display: 'flex', flexDirection: 'column',
+      color: '#000', display: 'flex',
       overflow: 'hidden',
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
     }}>
 
-      {/* ── BRAND HEADER — full logo image or text fallback ── */}
+      {/* ── LEFT — Brand Logo (top-left corner) ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: logoUrl ? 'center' : 'flex-start',
-        padding: '1mm 2.5mm', borderBottom: B,
-        flexShrink: 0, overflow: 'hidden',
+        width: '22mm', flexShrink: 0, borderRight: B,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1mm', overflow: 'hidden',
       }}>
         {logoUrl ? (
           <img src={logoUrl} alt={brand} style={{
-            height: '10mm', maxWidth: '100%',
+            maxWidth: '100%', maxHeight: '100%',
             objectFit: 'contain',
           }} />
         ) : (
           <span style={{
-            fontSize: s(13), fontWeight: 700, fontStyle: 'italic',
+            fontSize: s(10), fontWeight: 700, fontStyle: 'italic',
             fontFamily: 'Georgia, "Times New Roman", serif',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            textAlign: 'center', wordBreak: 'break-word',
             lineHeight: 1.1,
           }}>
-            {brand || <span style={{ color: '#ccc', fontStyle: 'normal', fontWeight: 400, fontSize: s(9) }}>Brand Name</span>}
+            {brand || <span style={{ color: '#ccc', fontStyle: 'normal', fontWeight: 400, fontSize: s(7) }}>Brand</span>}
           </span>
         )}
       </div>
 
-      {/* ── PRODUCT DETAILS ── */}
+      {/* ── RIGHT — Product Details ── */}
       <div style={{
         flex: '1 1 auto', display: 'flex', flexDirection: 'column',
         justifyContent: 'center', padding: '1.5mm 2.5mm',
-        overflow: 'hidden', minHeight: 0, gap: '1.2mm',
+        overflow: 'hidden', minWidth: 0, gap: '1mm',
       }}>
         {/* Product Code */}
-        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7.5), lineHeight: 1.3 }}>
-          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '24mm' }}>Product Code</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Code</span>
           <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
           <span style={{ fontWeight: 700 }}>{code || '----'}</span>
         </div>
 
         {/* Product Name */}
-        <div style={{ display: 'flex', fontSize: s(7.5), lineHeight: 1.3 }}>
-          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '24mm' }}>Product Name</span>
+        <div style={{ display: 'flex', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Name</span>
           <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
           <span style={{
             fontWeight: 700, textTransform: 'uppercase', wordBreak: 'break-word',
-            overflow: 'hidden', display: '-webkit-box',
-            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
           }}>
             {product || '----'}
           </span>
         </div>
 
+        {/* Product Description */}
+        <div style={{ display: 'flex', fontSize: s(6), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm', fontSize: s(7) }}>Product Desc</span>
+          <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm', fontSize: s(7) }}>:</span>
+          <span style={{
+            fontWeight: 600, wordBreak: 'break-word',
+            overflow: 'hidden', display: '-webkit-box',
+            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          }}>
+            {description || '----'}
+          </span>
+        </div>
+
         {/* Product Price */}
-        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7.5), lineHeight: 1.3 }}>
-          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '24mm' }}>Product Price</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Price</span>
           <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
-          <span style={{ fontWeight: 900, fontSize: s(9) }}>
+          <span style={{ fontWeight: 900, fontSize: s(8.5) }}>
             {price ? `\u20B9 ${price}` : '----'}
           </span>
         </div>
