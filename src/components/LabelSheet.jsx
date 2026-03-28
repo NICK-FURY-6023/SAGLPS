@@ -20,14 +20,15 @@ function LabelCell({ label, fontScale = 1 }) {
   const brandDisplay = brand ? brand.toUpperCase().split(/\s+/).slice(0, 3).join(' ') : '';
   const qrVal = (label.code?.trim() || label.product?.trim() || 'N/A').substring(0, 100);
   const s = (pt) => (pt * fontScale) + 'pt';
+  const B = '0.2mm solid #222';
 
   // Outer label box — all in inline styles to bypass Tailwind resets
   return (
     <div style={{
       width: '105mm', height: '48mm',
-      border: '0.3mm solid #222',
+      border: B,
       boxSizing: 'border-box',
-      padding: '1.2mm 1.5mm',
+      padding: '1mm 1.2mm',
       fontFamily: 'Arial, Helvetica, sans-serif',
       color: '#000',
       display: 'flex', flexDirection: 'column',
@@ -37,17 +38,17 @@ function LabelCell({ label, fontScale = 1 }) {
       position: 'relative',
     }}>
 
-      {/* ── ROW 1: Brand+QR left | Size/Qty/MRP table right ── height ~14mm */}
+      {/* ── ROW 1: Brand+QR left | Size/Qty/MRP table right ── */}
       <div style={{
         display: 'flex', alignItems: 'stretch',
-        borderBottom: '0.3mm solid #222',
-        paddingBottom: '1mm', marginBottom: '0.8mm',
-        minHeight: '12mm', maxHeight: '14mm',
+        borderBottom: B,
+        paddingBottom: '0.8mm', marginBottom: '0.6mm',
+        minHeight: '11.5mm', maxHeight: '13mm',
         flexShrink: 0,
       }}>
         {/* Left side: QR + Brand + Code */}
         <div style={{
-          display: 'flex', gap: '1.5mm', alignItems: 'flex-start',
+          display: 'flex', gap: '1.2mm', alignItems: 'flex-start',
           flex: '1 1 auto', minWidth: 0, overflow: 'hidden',
         }}>
           <div style={{ flexShrink: 0, width: '10mm', height: '10mm' }}>
@@ -57,20 +58,22 @@ function LabelCell({ label, fontScale = 1 }) {
               style={{ width: '10mm', height: '10mm', display: 'block' }}
             />
           </div>
-          <div style={{ minWidth: 0, overflow: 'hidden', paddingTop: '0.3mm' }}>
+          <div style={{ minWidth: 0, overflow: 'hidden', paddingTop: '0.2mm', maxWidth: '100%' }}>
             {brandDisplay ? (
               <div style={{
-                fontSize: s(9), fontWeight: 900, color: '#000',
+                fontSize: s(8.5), fontWeight: 900, color: '#000',
                 lineHeight: 1.1, whiteSpace: 'nowrap',
                 overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: '100%',
               }}>{brandDisplay}</div>
             ) : (
               <div style={{ fontSize: s(7), color: '#bbb' }}>BRAND</div>
             )}
             {label.code?.trim() && (
               <div style={{
-                fontSize: s(7), fontWeight: 800, color: '#000',
-                marginTop: '0.5mm',
+                fontSize: s(6.5), fontWeight: 800, color: '#000',
+                marginTop: '0.4mm',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{label.code}</div>
             )}
           </div>
@@ -79,47 +82,49 @@ function LabelCell({ label, fontScale = 1 }) {
         {/* Right side: Size/Qty/MRP table */}
         <table style={{
           borderCollapse: 'collapse', flexShrink: 0,
-          marginLeft: '1mm', alignSelf: 'flex-start',
+          marginLeft: '0.8mm', alignSelf: 'flex-start',
         }}>
           <thead>
             <tr>
               {['Size', 'Qty'].map(h => (
                 <th key={h} style={{
-                  border: '0.3mm solid #222',
-                  padding: '0.4mm 1.8mm',
-                  fontSize: s(6.5), fontWeight: 900, color: '#000',
+                  border: B,
+                  padding: '0.3mm 1.5mm',
+                  fontSize: s(6), fontWeight: 900, color: '#000',
                   textAlign: 'center', whiteSpace: 'nowrap',
-                  lineHeight: 1.2,
+                  lineHeight: 1.15,
                 }}>{h}</th>
               ))}
               <th style={{
-                border: '0.3mm solid #222',
-                padding: '0.4mm 1.8mm',
-                fontSize: s(5.5), fontWeight: 900, color: '#000',
+                border: B,
+                padding: '0.3mm 1.5mm',
+                fontSize: s(5), fontWeight: 900, color: '#000',
                 textAlign: 'center', whiteSpace: 'nowrap',
-                lineHeight: 1.2,
+                lineHeight: 1.15,
               }}>MRP (Per Piece)</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
-                fontSize: s(7), fontWeight: 800, color: '#000', textAlign: 'center',
+                border: B, padding: '0.2mm 1.5mm',
+                fontSize: s(6.5), fontWeight: 800, color: '#000', textAlign: 'center',
+                whiteSpace: 'nowrap',
               }}>{label.size?.trim() || '----'}</td>
               <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
-                fontSize: s(7), fontWeight: 800, color: '#000', textAlign: 'center',
+                border: B, padding: '0.2mm 1.5mm',
+                fontSize: s(6.5), fontWeight: 800, color: '#000', textAlign: 'center',
+                whiteSpace: 'nowrap',
               }}>{label.qty?.trim() || '----'}</td>
               <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
+                border: B, padding: '0.2mm 1.5mm',
                 textAlign: 'center', verticalAlign: 'middle',
               }}>
-                <div style={{ fontSize: s(9), fontWeight: 900, color: '#000', lineHeight: 1.1 }}>
+                <div style={{ fontSize: s(8.5), fontWeight: 900, color: '#000', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
                   {label.price?.trim() ? `₹${label.price}` : '----'}
                 </div>
                 {label.price?.trim() && (
-                  <div style={{ fontSize: s(4.5), color: '#333', lineHeight: 1, marginTop: '0.2mm' }}>
+                  <div style={{ fontSize: s(4), color: '#333', lineHeight: 1, marginTop: '0.1mm', whiteSpace: 'nowrap' }}>
                     (Incl. Of All Taxes)
                   </div>
                 )}
@@ -129,38 +134,43 @@ function LabelCell({ label, fontScale = 1 }) {
         </table>
       </div>
 
-      {/* ── ROW 2: Product description — fills remaining space ~20mm ── */}
+      {/* ── ROW 2: Product description — fills remaining space ── */}
       <div style={{
         flex: '1 1 auto',
         display: 'flex', alignItems: 'flex-start',
         overflow: 'hidden',
-        padding: '0.5mm 0',
+        padding: '0.4mm 0',
+        minHeight: 0,
       }}>
         {label.product?.trim() ? (
           <div style={{
-            fontSize: s(8.5), fontWeight: 900, color: '#000',
-            lineHeight: 1.3, textTransform: 'uppercase',
+            fontSize: s(8), fontWeight: 900, color: '#000',
+            lineHeight: 1.25, textTransform: 'uppercase',
             wordBreak: 'break-word',
             overflow: 'hidden',
-            maxHeight: '100%',
+            display: '-webkit-box',
+            WebkitLineClamp: 4,
+            WebkitBoxOrient: 'vertical',
+            width: '100%',
           }}>{label.product}</div>
         ) : (
           <div style={{ fontSize: s(7), color: '#ccc' }}>PRODUCT DESCRIPTION</div>
         )}
       </div>
 
-      {/* ── ROW 3: Manufacturer bottom bar ~10mm ── */}
+      {/* ── ROW 3: Manufacturer bottom bar ── */}
       <div style={{
-        borderTop: '0.3mm solid #222',
-        paddingTop: '0.8mm',
+        borderTop: B,
+        paddingTop: '0.6mm',
         flexShrink: 0,
         overflow: 'hidden',
       }}>
         {/* Manufactured By row */}
         {label.code?.trim() && (
           <div style={{
-            display: 'flex', gap: '2mm', marginBottom: '0.5mm',
-            fontSize: s(5.5), color: '#222', lineHeight: 1.2,
+            display: 'flex', gap: '1.5mm', marginBottom: '0.3mm',
+            fontSize: s(5), color: '#222', lineHeight: 1.15,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             <span><b style={{ fontWeight: 800 }}>Manufactured By:</b> {label.code}</span>
           </div>
@@ -168,8 +178,8 @@ function LabelCell({ label, fontScale = 1 }) {
         {/* Company name */}
         {brand ? (
           <div style={{
-            fontSize: s(7.5), fontWeight: 900, color: '#000',
-            lineHeight: 1.15, textTransform: 'uppercase',
+            fontSize: s(7), fontWeight: 900, color: '#000',
+            lineHeight: 1.1, textTransform: 'uppercase',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{brand}</div>
         ) : (
