@@ -83,19 +83,19 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         overflow: 'hidden', minWidth: 0, gap: '0.6mm',
       }}>
         {code && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '16mm' }}>Product Code</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
-            <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm' }}>Product Code</span>
+            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
+            <span style={{ fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
           </div>
         )}
 
         {product && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(5.5), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '16mm', fontSize: s(6) }}>Product Name</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm', fontSize: s(6) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(6.5), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm', fontSize: s(7) }}>Product Name</span>
+            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm', fontSize: s(7) }}>:</span>
             <span style={{
-              fontWeight: 600, textTransform: 'uppercase', wordBreak: 'break-word',
+              fontWeight: 700, textTransform: 'uppercase', wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}>
@@ -105,11 +105,11 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {description && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(5), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '16mm', fontSize: s(6) }}>Product Desc</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm', fontSize: s(6) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(5.5), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm', fontSize: s(7) }}>Product Desc</span>
+            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm', fontSize: s(7) }}>:</span>
             <span style={{
-              fontWeight: 500, wordBreak: 'break-word',
+              fontWeight: 600, wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}>
@@ -119,10 +119,10 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {price && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '16mm' }}>Product Price</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
-            <span style={{ fontWeight: 900, fontSize: s(7) }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm' }}>Product Price</span>
+            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
+            <span style={{ fontWeight: 900, fontSize: s(8) }}>
               {`\u20B9 ${price}`}
             </span>
           </div>
