@@ -360,7 +360,7 @@ export default function Landing() {
               borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 4px 16px rgba(249,115,22,0.3)', letterSpacing: 0.3,
             }}>
-            Open Dashboard \u2192
+            Open Dashboard →
           </motion.button>
         </div>
       </motion.nav>
