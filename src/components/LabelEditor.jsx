@@ -85,7 +85,7 @@ function JaquarSearchDropdown({ results, loading, onSelect, visible }) {
 }
 
 const emptyLabel = () => ({
-  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '',
+  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '',
 });
 const isFilled   = (l) => !!(l.product?.trim() || l.code?.trim() || l.price?.trim());
 
@@ -99,19 +99,20 @@ function Icon({ d, size = 13, sw = 2 }) {
   );
 }
 
-function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive, onActivate }) {
+function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onReset, isActive, onActivate }) {
   const [open, setOpen] = useState(index === 0);
   const cardRef = useRef(null);
   const filled = isFilled(label);
 
   // Jaquar search state
-  const [searchField, setSearchField] = useState(null); // which field is being searched
+  const [searchField, setSearchField] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [fetchingDetail, setFetchingDetail] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 300);
-  const dropdownRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   // Trigger search when debounced query changes
   useEffect(() => {
@@ -135,7 +136,7 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setShowDropdown(false);
       }
     };
@@ -148,23 +149,37 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
     setSearchField(key);
     setSearchQuery(value);
     if (value.length >= 3) setSearchLoading(true);
-    else setShowDropdown(false);
+    else { setShowDropdown(false); setSearchResults([]); }
   };
 
   const handleProductSelect = async (product) => {
     setShowDropdown(false);
     setSearchQuery('');
-    // Fill basic fields immediately
-    onChange('code', product.code || '');
-    onChange('product', product.name || '');
+    setSearchResults([]);
+    setFetchingDetail(true);
+
+    // Build product URL for Jaquar website
+    const jaquarUrl = product.url ? `https://www.jaquar.com${product.url}` : '';
+
+    // Fill all fields at once using onFillMulti (fixes batching issue)
+    const fields = {
+      code: product.code || '',
+      product: product.name || '',
+      productUrl: jaquarUrl,
+    };
 
     // Fetch full details for description
     if (product.url) {
-      const detail = await fetchJaquarProduct(product.url);
-      if (detail) {
-        if (detail.description) onChange('description', detail.description);
-      }
+      try {
+        const detail = await fetchJaquarProduct(product.url);
+        if (detail && detail.description) {
+          fields.description = detail.description;
+        }
+      } catch {}
     }
+
+    onFillMulti(fields);
+    setFetchingDetail(false);
   };
 
   useEffect(() => {
@@ -215,7 +230,12 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
       </button>
 
       {open && (
-        <div style={{ padding: 14, background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+        <div ref={wrapperRef} style={{ padding: 14, background: '#0f172a', borderTop: '1px solid #1e293b' }}>
+          {fetchingDetail && (
+            <div style={{ padding: '8px 0', fontSize: 11, color: '#f97316', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span className="jq-spinner" /> Product details load ho raha hai...
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {FIELDS.map(({ key, label: fl, placeholder, span, section, searchable }) => (
               <React.Fragment key={key}>
@@ -226,7 +246,7 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
                     paddingTop: 8, borderTop: '1px solid #334155', marginTop: 2,
                   }}>{section}</div>
                 )}
-                <div style={{ gridColumn: span === 2 ? '1 / -1' : undefined, position: 'relative' }} ref={searchable ? dropdownRef : undefined}>
+                <div style={{ gridColumn: span === 2 ? '1 / -1' : undefined, position: 'relative' }}>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4, letterSpacing: '0.05em' }}>
                     {fl}
                     {searchable && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 4 }}>🔍 Jaquar</span>}
@@ -235,7 +255,7 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
                     type="text"
                     value={label[key] || ''}
                     onChange={e => searchable ? handleSearchableChange(key, e.target.value) : onChange(key, e.target.value)}
-                    onFocus={() => { if (searchable && searchResults.length > 0) setShowDropdown(true); }}
+                    onFocus={() => { if (searchable) { setSearchField(key); if (searchResults.length > 0) setShowDropdown(true); } }}
                     placeholder={placeholder}
                     className="input-dark"
                     style={{ fontSize: 12, padding: '7px 10px' }}
@@ -293,12 +313,13 @@ export default function LabelEditor({ labels, setLabels }) {
   const [applyAll, setApplyAll]             = useState(emptyLabel());
   const [applyPanelOpen, setApplyPanelOpen] = useState(false);
 
-  const updateLabel    = (index, key, value) => setLabels(labels.map((l, i) => i === index ? { ...l, [key]: value } : l));
-  const resetLabel     = (index)             => setLabels(labels.map((l, i) => i === index ? emptyLabel() : l));
-  const duplicateToAll = (src)               => setLabels(labels.map(() => ({ ...src })));
+  const updateLabel    = (index, key, value) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, [key]: value } : l));
+  const updateLabelMulti = (index, fields) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, ...fields } : l));
+  const resetLabel     = (index)             => setLabels(prev => prev.map((l, i) => i === index ? emptyLabel() : l));
+  const duplicateToAll = (src)               => setLabels(prev => prev.map(() => ({ ...src })));
 
   const handleApplyAll = () => {
-    setLabels(labels.map(l => {
+    setLabels(prev => prev.map(l => {
       const merged = { ...l };
       Object.entries(applyAll).forEach(([k, v]) => { if (v.trim()) merged[k] = v; });
       return merged;
@@ -412,6 +433,7 @@ export default function LabelEditor({ labels, setLabels }) {
             isActive={activeIndex === i}
             onActivate={setActiveIndex}
             onChange={(key, value) => updateLabel(i, key, value)}
+            onFillMulti={(fields) => updateLabelMulti(i, fields)}
             onDuplicateToAll={duplicateToAll}
             onReset={resetLabel}
           />

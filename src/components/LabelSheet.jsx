@@ -1,12 +1,29 @@
 /*
  * Clean product label — 105mm × 48mm
- * ┌────────┬─────────────────────────────────────────┐
- * │        │ Product Code  :  ALD-CHR-070N            │
- * │ [LOGO] │ Product Name  :  CONCEALED BODY DIVERTER │
- * │        │ Product Desc  :  High quality brass...   │
- * │        │ Product Price :  ₹ 3,800.00              │
- * └────────┴─────────────────────────────────────────┘
+ * ┌────────┬─────────────────────────────────────┬──────┐
+ * │        │ Product Code  :  ALD-CHR-055N        │      │
+ * │ [LOGO] │ Product Name  :  CONCEALED BODY DIV  │ [QR] │
+ * │        │ Product Desc  :  High quality brass.. │      │
+ * │        │ Product Price :  ₹ 3,800.00          │      │
+ * └────────┴─────────────────────────────────────┴──────┘
  */
+
+import { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
+
+// Generate QR code data URL (cached per URL)
+const qrCache = {};
+function useQRCode(url) {
+  const [dataUrl, setDataUrl] = useState(qrCache[url] || '');
+  useEffect(() => {
+    if (!url) { setDataUrl(''); return; }
+    if (qrCache[url]) { setDataUrl(qrCache[url]); return; }
+    QRCode.toDataURL(url, { width: 120, margin: 0, errorCorrectionLevel: 'M' })
+      .then(d => { qrCache[url] = d; setDataUrl(d); })
+      .catch(() => setDataUrl(''));
+  }, [url]);
+  return dataUrl;
+}
 
 function LabelCell({ label, fontScale = 1 }) {
   const brand = label.manufacturer?.trim() || '';
@@ -15,6 +32,8 @@ function LabelCell({ label, fontScale = 1 }) {
   const description = label.description?.trim() || '';
   const price = label.price?.trim() || '';
   const logoUrl = label.logoUrl?.trim() || 'https://iconlogovector.com/uploads/images/2025/03/lg-67d9f91338422-Jaquar.webp';
+  const productUrl = label.productUrl?.trim() || '';
+  const qrDataUrl = useQRCode(productUrl);
   const s = (pt) => `${pt * fontScale}pt`;
   const B = '0.2mm solid #222';
 
@@ -51,7 +70,7 @@ function LabelCell({ label, fontScale = 1 }) {
         )}
       </div>
 
-      {/* ── RIGHT — Product Details ── */}
+      {/* ── CENTER — Product Details ── */}
       <div style={{
         flex: '1 1 auto', display: 'flex', flexDirection: 'column',
         justifyContent: 'center', padding: '1.5mm 2.5mm',
@@ -106,6 +125,20 @@ function LabelCell({ label, fontScale = 1 }) {
           </div>
         )}
       </div>
+
+      {/* ── RIGHT — QR Code (only if product URL exists) ── */}
+      {qrDataUrl && (
+        <div style={{
+          width: '14mm', flexShrink: 0, borderLeft: B,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '1mm', overflow: 'hidden',
+        }}>
+          <img src={qrDataUrl} alt="QR" style={{
+            width: '100%', maxHeight: '100%',
+            objectFit: 'contain',
+          }} />
+        </div>
+      )}
 
     </div>
   );
