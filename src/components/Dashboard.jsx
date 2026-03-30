@@ -273,11 +273,11 @@ function HistoryModal({ onClose, onRestore }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginBottom: 3 }}>
-                    {h.templateName || 'Untitled'}
+                    {h.templateName || h.autoName || 'Untitled'}
                     <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8', marginLeft: 8, textTransform: 'capitalize' }}>{h.action}</span>
                   </div>
                   <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>
-                    {h.filledCount}/12 labels{h.copies > 1 ? ` · ${h.copies} copies` : ''}
+                    {h.filledCount}/{(h.pageCount || 1) * 12} labels{h.pageCount > 1 ? ` · ${h.pageCount} pages` : ''}{h.copies > 1 ? ` · ${h.copies} copies` : ''}
                   </div>
                   <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>📅 {fmtDate(h.time)}</span>
@@ -285,8 +285,8 @@ function HistoryModal({ onClose, onRestore }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  {h.labels && (
-                    <Btn onClick={() => { onRestore(h.labels, h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
+                  {(h.labels || h.pages) && (
+                    <Btn onClick={() => { onRestore(h.pages || [h.labels], h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
                       Restore
                     </Btn>
                   )}
@@ -309,11 +309,41 @@ function HistoryModal({ onClose, onRestore }) {
   );
 }
 
+/* ── Auto-generate history name from label content ────────────────── */
+function generateAutoName(pages) {
+  const allLabels = pages.flat();
+  const filled = allLabels.filter(l => l.product?.trim() || l.code?.trim());
+  if (!filled.length) return 'Empty';
+  const brands = [...new Set(filled.map(l => l.manufacturer?.trim()).filter(Boolean))];
+  const firstCode = filled[0].code?.trim() || '';
+  let name = '';
+  if (brands.length === 1) {
+    name = brands[0];
+    if (firstCode) name += ` ${firstCode}`;
+  } else if (firstCode) {
+    name = firstCode;
+  } else {
+    name = filled[0].product?.trim()?.slice(0, 30) || 'Labels';
+  }
+  if (filled.length > 1) name += ` +${filled.length - 1}`;
+  if (pages.length > 1) name += ` (${pages.length}pg)`;
+  return name;
+}
+
 /* ── Log to history ───────────────────────────────────────────────── */
-function logHistory(action, templateName, filledCount, labels, copies = 1) {
+function logHistory(action, templateName, filledCount, pages, copies = 1) {
   try {
+    const autoName = generateAutoName(pages);
+    const displayName = templateName || autoName;
     const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    const entry = { id: Date.now(), action, templateName, filledCount, copies, time: new Date().toISOString(), labels: JSON.parse(JSON.stringify(labels)) };
+    const entry = {
+      id: Date.now(), action, templateName: displayName, autoName, filledCount, copies,
+      pageCount: pages.length,
+      time: new Date().toISOString(),
+      pages: JSON.parse(JSON.stringify(pages)),
+      // Keep backward compat: labels = first page
+      labels: JSON.parse(JSON.stringify(pages[0] || [])),
+    };
     const updated = [entry, ...existing].slice(0, 30);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
   } catch { /* ignore */ }
@@ -323,18 +353,61 @@ function logHistory(action, templateName, filledCount, labels, copies = 1) {
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [labels, setLabels] = useState(() => {
+
+  // ── Multi-page state ──
+  const [pages, setPages] = useState(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // New format: { pages: [[...], [...]] }
+        if (parsed.pages && Array.isArray(parsed.pages) && parsed.pages.length) {
+          return parsed.pages.map(page =>
+            Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+          );
+        }
+        // Old format: flat array of 12
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(parsed[i] || {}) }));
+          return [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(parsed[i] || {}) }))];
         }
       }
     } catch { /* ignore */ }
-    return initialLabels();
+    return [initialLabels()];
   });
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Current page's labels (derived)
+  const labels = pages[currentPage] || initialLabels();
+  const setLabels = (newLabelsOrFn) => {
+    setPages(prev => {
+      const updated = [...prev];
+      const page = Math.min(currentPage, prev.length - 1);
+      updated[page] = typeof newLabelsOrFn === 'function' ? newLabelsOrFn(prev[page]) : newLabelsOrFn;
+      return updated;
+    });
+  };
+
+  const addPage = () => {
+    setPages(prev => [...prev, initialLabels()]);
+    setCurrentPage(pages.length);
+    toast.success(`Page ${pages.length + 1} added`);
+  };
+
+  const removePage = (idx) => {
+    if (pages.length <= 1) { toast.error('Cannot remove the last page'); return; }
+    if (!confirm(`Remove page ${idx + 1}? All labels on this page will be lost.`)) return;
+    setPages(prev => prev.filter((_, i) => i !== idx));
+    if (currentPage >= pages.length - 1) setCurrentPage(Math.max(0, pages.length - 2));
+    else if (currentPage > idx) setCurrentPage(currentPage - 1);
+    toast.success(`Page ${idx + 1} removed`);
+  };
+
+  const duplicatePage = (idx) => {
+    const copy = JSON.parse(JSON.stringify(pages[idx]));
+    setPages(prev => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
+    setCurrentPage(idx + 1);
+    toast.success(`Page ${idx + 1} duplicated`);
+  };
 
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [templateManagerMode, setTemplateManagerMode] = useState('load');
@@ -346,12 +419,12 @@ export default function Dashboard() {
   const [fontScale, setFontScale] = useState(1);
   const autoSaveTimer = useRef(null);
 
-  // Auto-save draft
+  // Auto-save draft (all pages)
   const autoFadeTimer = useRef(null);
   useEffect(() => {
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(labels)); }
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); }
       catch (err) {
         if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
       }
@@ -363,7 +436,7 @@ export default function Dashboard() {
       clearTimeout(autoSaveTimer.current);
       clearTimeout(autoFadeTimer.current);
     };
-  }, [labels]);
+  }, [pages]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -377,32 +450,44 @@ export default function Dashboard() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [labels, copies, currentTemplateName]);
+  }, [pages, copies, currentTemplateName]);
 
   const openSave = () => { setTemplateManagerMode('save'); setShowTemplateManager(true); };
   const openLoad = () => { setTemplateManagerMode('load'); setShowTemplateManager(true); };
 
   const handlePrint = () => {
-    const filledCount = labels.filter(l => l.product?.trim()).length;
-    if (!filledCount) { toast.error('No labels filled — nothing to print!'); return; }
-    logHistory('print', currentTemplateName || 'Untitled', filledCount, labels, copies);
+    const totalFilled = pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
+    if (!totalFilled) { toast.error('No labels filled — nothing to print!'); return; }
+    logHistory('print', currentTemplateName, totalFilled, pages, copies);
     window.print();
   };
 
   const handleTemplateLoad = (template) => {
     const raw = template.label_data || template.labelData;
-    const arr = Array.isArray(raw) ? raw : (raw?.labels ?? []);
-    const padded = Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }));
-    setLabels(padded);
+    let loadedPages;
+    // New format: { pages: [[...], [...]] }
+    if (raw && raw.pages && Array.isArray(raw.pages)) {
+      loadedPages = raw.pages.map(page =>
+        Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+      );
+    } else {
+      // Old format: flat array
+      const arr = Array.isArray(raw) ? raw : (raw?.labels ?? []);
+      loadedPages = [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }))];
+    }
+    setPages(loadedPages);
+    setCurrentPage(0);
     setCurrentTemplateName(template.name);
     setShowTemplateManager(false);
-    logHistory('load', template.name, padded.filter(l => l.product?.trim()).length, padded);
+    const totalFilled = loadedPages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
+    logHistory('load', template.name, totalFilled, loadedPages);
     toast.success(`Loaded "${template.name}"`);
   };
 
   const handleReset = () => {
-    if (!confirm('Reset all labels?')) return;
-    setLabels(initialLabels());
+    if (!confirm('Reset all pages and labels?')) return;
+    setPages([initialLabels()]);
+    setCurrentPage(0);
     setCurrentTemplateName('');
     localStorage.removeItem(DRAFT_KEY);
     toast('Labels cleared');
@@ -412,11 +497,11 @@ export default function Dashboard() {
     setLabels(newLabels);
     setCurrentTemplateName('');
     setShowCSVImport(false);
-    toast.success(`Imported ${newLabels.filter(l => l.product?.trim()).length} labels from CSV`);
+    toast.success(`Imported ${newLabels.filter(l => l.product?.trim()).length} labels to page ${currentPage + 1}`);
   };
 
   const handleJSONExport = () => {
-    const data = { labels, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
+    const data = { pages, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
@@ -426,8 +511,9 @@ export default function Dashboard() {
   };
 
   const handleCSVExport = () => {
+    const allLabels = pages.flat();
     const header = 'product,code,description,price,logo,productUrl';
-    const rows = labels.map(l =>
+    const rows = allLabels.map(l =>
       [l.product, l.code, l.description, l.price, l.logo, l.productUrl]
         .map(v => `"${(v || '').replace(/"/g, '""')}"`)
         .join(',')
@@ -457,12 +543,21 @@ export default function Dashboard() {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
-          const arr = Array.isArray(data) ? data : (data.labels || []);
-          if (!arr.length) { toast.error('Invalid JSON format'); return; }
-          const padded = Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }));
-          setLabels(padded);
+          let loadedPages;
+          if (data.pages && Array.isArray(data.pages)) {
+            loadedPages = data.pages.map(page =>
+              Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+            );
+          } else {
+            const arr = Array.isArray(data) ? data : (data.labels || []);
+            if (!arr.length) { toast.error('Invalid JSON format'); return; }
+            loadedPages = [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }))];
+          }
+          setPages(loadedPages);
+          setCurrentPage(0);
           if (data.templateName) setCurrentTemplateName(data.templateName);
-          toast.success(`Imported ${padded.filter(l => l.product?.trim()).length} labels`);
+          const totalFilled = loadedPages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
+          toast.success(`Imported ${totalFilled} labels (${loadedPages.length} page${loadedPages.length > 1 ? 's' : ''})`);
         } catch { toast.error('Invalid JSON file'); }
       };
       reader.readAsText(file);
@@ -471,6 +566,7 @@ export default function Dashboard() {
   };
 
   const filledCount = labels.filter(l => l.product?.trim()).length;
+  const totalFilled = pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
 
   return (
     <div className="min-h-screen flex flex-col no-print" style={{ background: '#0f172a', color: '#f1f5f9' }}>
@@ -486,7 +582,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>Shree Ganpati Agency</div>
-              <div style={{ fontSize: 9, opacity: 0.7, letterSpacing: '0.1em' }}>LABEL PRINT SYSTEM v2</div>
+              <div style={{ fontSize: 9, opacity: 0.7, letterSpacing: '0.1em' }}>LABEL PRINT SYSTEM v3</div>
             </div>
             {currentTemplateName && (
               <div style={{ marginLeft: 8, padding: '3px 10px', background: 'rgba(255,255,255,0.15)', borderRadius: 20, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -503,7 +599,8 @@ export default function Dashboard() {
               Saved
             </div>
             <div style={{ padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', fontSize: 11, fontWeight: 600 }}>
-              {filledCount}/12
+              {totalFilled}/{pages.length * 12}
+              {pages.length > 1 && <span style={{ opacity: 0.7, marginLeft: 4 }}>({pages.length}pg)</span>}
             </div>
 
             <Btn onClick={() => setShowCSVImport(true)} variant="ghost">
@@ -547,6 +644,95 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {/* ─── Page Navigator ─── */}
+      <div style={{
+        background: '#1e293b', borderBottom: '1px solid #334155', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px',
+        maxWidth: 1600, width: '100%', margin: '0 auto',
+      }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', marginRight: 4 }}>PAGES</span>
+        {pages.map((page, i) => {
+          const pFilled = page.filter(l => l.product?.trim()).length;
+          const isActive = i === currentPage;
+          return (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i)}
+              onContextMenu={(e) => { e.preventDefault(); if (pages.length > 1) removePage(i); }}
+              title={`Page ${i + 1} — ${pFilled}/12 filled${pages.length > 1 ? ' (right-click to remove)' : ''}`}
+              style={{
+                padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: isActive ? '1px solid #f97316' : '1px solid #334155',
+                background: isActive ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.04)',
+                color: isActive ? '#f97316' : '#94a3b8',
+                transition: 'all 0.15s', position: 'relative',
+              }}
+            >
+              {i + 1}
+              {pFilled > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 700,
+                  background: pFilled === 12 ? '#22c55e' : '#f97316', color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {pFilled}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <button
+          onClick={addPage}
+          title="Add new page"
+          style={{
+            padding: '4px 10px', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            border: '1px dashed #334155', background: 'transparent', color: '#64748b',
+            transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
+          }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.color = '#f97316'; }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = '#334155'; e.currentTarget.style.color = '#64748b'; }}
+        >
+          + Page
+        </button>
+        {pages.length > 1 && (
+          <>
+            <div style={{ width: 1, height: 18, background: '#334155', margin: '0 4px' }} />
+            <button
+              onClick={() => duplicatePage(currentPage)}
+              title={`Duplicate page ${currentPage + 1}`}
+              style={{
+                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                border: '1px solid #334155', background: 'transparent', color: '#64748b',
+                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
+              }}
+              onMouseOver={e => { e.currentTarget.style.color = '#60a5fa'; }}
+              onMouseOut={e => { e.currentTarget.style.color = '#64748b'; }}
+            >
+              <Icon d="M8 7v8a2 2 0 0 0 2 2h6M8 7V5a2 2 0 0 1 2-2h4.586a1 1 0 0 1 .707.293l4.414 4.414a1 1 0 0 1 .293.707V15a2 2 0 0 1-2 2h-2M8 7H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2" size={12} />
+              Duplicate
+            </button>
+            <button
+              onClick={() => removePage(currentPage)}
+              title={`Remove page ${currentPage + 1}`}
+              style={{
+                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#64748b',
+                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
+              }}
+              onMouseOver={e => { e.currentTarget.style.color = '#ef4444'; }}
+              onMouseOut={e => { e.currentTarget.style.color = '#64748b'; }}
+            >
+              <Icon d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V3.5A1.5 1.5 0 0 1 9.5 2h5A1.5 1.5 0 0 1 16 3.5V7" size={12} />
+              Remove
+            </button>
+          </>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>
+          Page {currentPage + 1} of {pages.length} &middot; {filledCount}/12 on this page
+        </span>
+      </div>
+
       {/* ─── Main split ─── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', maxWidth: 1600, width: '100%', margin: '0 auto' }}>
         <div style={{ width: '42%', overflowY: 'auto', flexShrink: 0, borderRight: '1px solid #1e293b', background: '#0f172a' }}>
@@ -555,6 +741,7 @@ export default function Dashboard() {
         <div style={{ flex: 1, overflowY: 'auto', background: '#111827' }}>
           <LabelPreview
             labels={labels}
+            pages={pages}
             onSave={openSave}
             onLoad={openLoad}
             copies={copies}
@@ -567,12 +754,17 @@ export default function Dashboard() {
       </div>
 
       {showTemplateManager && (
-        <TemplateManager mode={templateManagerMode} labels={labels} onLoad={handleTemplateLoad} onClose={() => setShowTemplateManager(false)} />
+        <TemplateManager mode={templateManagerMode} labels={{ pages }} onLoad={handleTemplateLoad} onClose={() => setShowTemplateManager(false)} />
       )}
       {showCSVImport && <CSVImportModal onImport={handleCSVImport} onClose={() => setShowCSVImport(false)} />}
-      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onRestore={(l, n) => {
-        const padded = Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(l[i] || {}) }));
-        setLabels(padded); setCurrentTemplateName(n || ''); toast.success('Labels restored from history');
+      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onRestore={(restoredPages, n) => {
+        const loadedPages = restoredPages.map(page =>
+          Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+        );
+        setPages(loadedPages);
+        setCurrentPage(0);
+        setCurrentTemplateName(n || '');
+        toast.success(`Restored ${loadedPages.length} page${loadedPages.length > 1 ? 's' : ''} from history`);
       }} />}
     </div>
   );

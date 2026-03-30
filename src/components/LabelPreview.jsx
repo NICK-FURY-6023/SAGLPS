@@ -43,6 +43,7 @@ function ToolBtn({ onClick, disabled, title, children, variant = 'ghost', style:
 
 export default function LabelPreview({
   labels,
+  pages,
   onSave, onLoad, onPrint,
   copies = 1, onCopiesChange,
   fontScale = 1, onFontScaleChange,
@@ -78,7 +79,6 @@ export default function LabelPreview({
       const QRLib = (await import('qrcode')).default;
 
       const pdf = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait', compress: true });
-      const safeLabels = Array.from({ length: 12 }, (_, i) => labels[i] || {});
 
       // ── Layout constants (must match CSS .sheet grid) ──
       const PX = 3.5, GAP = 1;
@@ -104,20 +104,23 @@ export default function LabelPreview({
         } catch { return null; }
       }
 
-      // Load unique logos
-      const logoCache = {};
-      for (const l of safeLabels) {
-        const url = l.logoUrl?.trim() || '/jaquar-logo.png';
-        if (!logoCache[url]) logoCache[url] = await loadImg(url);
-      }
+      const allPages = pages || [labels];
 
-      // Generate QR codes
+      // ── Pre-load images for ALL pages ──
+      const logoCache = {};
       const qrCache = {};
-      for (const l of safeLabels) {
-        const url = l.productUrl?.trim();
-        if (url && !qrCache[url]) {
-          try { qrCache[url] = await QRLib.toDataURL(url, { width: 200, margin: 0, errorCorrectionLevel: 'M' }); }
-          catch { /* skip */ }
+      for (const pageLabels of allPages) {
+        const safeLabels = Array.from({ length: 12 }, (_, i) => pageLabels[i] || {});
+        for (const l of safeLabels) {
+          const url = l.logoUrl?.trim() || '/jaquar-logo.png';
+          if (!logoCache[url]) logoCache[url] = await loadImg(url);
+        }
+        for (const l of safeLabels) {
+          const url = l.productUrl?.trim();
+          if (url && !qrCache[url]) {
+            try { qrCache[url] = await QRLib.toDataURL(url, { width: 200, margin: 0, errorCorrectionLevel: 'M' }); }
+            catch { /* skip */ }
+          }
         }
       }
 
@@ -127,9 +130,13 @@ export default function LabelPreview({
         return { w: img.w * scale, h: img.h * scale };
       }
 
-      // ── Render pages ──
+      // ── Render all pages × copies ──
+      let isFirstPage = true;
       for (let copy = 0; copy < copies; copy++) {
-        if (copy > 0) pdf.addPage();
+        for (let pageIdx = 0; pageIdx < allPages.length; pageIdx++) {
+          if (!isFirstPage) pdf.addPage();
+          isFirstPage = false;
+          const safeLabels = Array.from({ length: 12 }, (_, i) => allPages[pageIdx][i] || {});
 
         for (let idx = 0; idx < 12; idx++) {
           const label = safeLabels[idx];
@@ -228,6 +235,7 @@ export default function LabelPreview({
             ty += r.rowH + rowGap;
           }
         }
+        } // end pageIdx loop
       }
 
       pdf.save('ganpati-labels.pdf');
@@ -240,6 +248,8 @@ export default function LabelPreview({
   };
 
   const filledCount = labels.filter(l => l.product?.trim()).length;
+  const totalPages = pages ? pages.length : 1;
+  const totalFilled = pages ? pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0) : filledCount;
 
   return (
     <div ref={containerRef} style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 16, gap: 12 }}>
@@ -301,7 +311,7 @@ export default function LabelPreview({
 
         {/* Stats */}
         <div style={{ padding: '4px 10px', borderRadius: 20, background: '#0f172a', border: '1px solid #334155', fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
-          {filledCount}/12 &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
+          {totalFilled}/{totalPages * 12}{totalPages > 1 ? ` (${totalPages}pg)` : ''} &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
         </div>
       </div>
 
@@ -350,10 +360,12 @@ export default function LabelPreview({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
-          <span style={{ fontSize: 11, color: '#475569' }}>Live A4 Preview &middot; 210×297mm &middot; 12 labels</span>
+          <span style={{ fontSize: 11, color: '#475569' }}>Live A4 Preview &middot; 210×297mm &middot; {totalPages > 1 ? `${totalPages} pages · ` : ''}{totalFilled} labels</span>
         </div>
-        {copies > 1 && (
-          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600 }}>{copies} copies on print</span>
+        {(copies > 1 || totalPages > 1) && (
+          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600 }}>
+            {totalPages * copies} sheet{totalPages * copies > 1 ? 's' : ''} on print
+          </span>
         )}
       </div>
 
@@ -372,10 +384,11 @@ export default function LabelPreview({
       {/* ── Print Portal: renders directly under <body> for reliable Ctrl+P ── */}
       {createPortal(
         <div className="print-root" style={{ display: 'none' }}>
-          <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
-          {Array.from({ length: Math.max(0, copies - 1) }, (_, i) => (
-            <LabelSheet key={i} labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
-          ))}
+          {Array.from({ length: copies }, (_, copyIdx) =>
+            (pages || [labels]).map((pageLabels, pageIdx) => (
+              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} extraTopMargin={printMargin} fontScale={fontScale} />
+            ))
+          )}
         </div>,
         document.body
       )}
