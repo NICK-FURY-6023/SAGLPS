@@ -14,7 +14,8 @@ function LabelCell({ label, fontScale = 1 }) {
   const product = label.product?.trim() || '';
   const description = label.description?.trim() || '';
   const price = label.price?.trim() || '';
-  const logoUrl = label.logoUrl?.trim() || '';
+  // Set default logo permanently
+  const logoUrl = label.logoUrl?.trim() || 'https://iconlogovector.com/uploads/images/2025/03/lg-67d9f91338422-Jaquar.webp';
   const s = (pt) => `${pt * fontScale}pt`;
   const B = '0.2mm solid #222';
 
@@ -65,11 +66,11 @@ function LabelCell({ label, fontScale = 1 }) {
         </div>
 
         {/* Product Name */}
-        <div style={{ display: 'flex', fontSize: s(7), lineHeight: 1.3 }}>
+        <div style={{ display: 'flex', fontSize: s(7.5), lineHeight: 1.3 }}>
           <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Name</span>
           <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
           <span style={{
-            fontWeight: 700, textTransform: 'uppercase', wordBreak: 'break-word',
+            fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word',
             overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
           }}>
             {product || '----'}
