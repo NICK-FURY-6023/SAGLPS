@@ -1,15 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const FIELDS = [
-  { key: 'product',      label: 'Product Name',  placeholder: 'e.g. Basmati Rice 1kg',        span: 2 },
-  { key: 'code',         label: 'Code / SKU',    placeholder: 'e.g. GR-001',                  span: 1 },
-  { key: 'price',        label: 'Price (₹)',      placeholder: 'e.g. 120',                     span: 1 },
-  { key: 'size',         label: 'Size / Weight', placeholder: 'e.g. 1 kg',                    span: 1 },
-  { key: 'qty',          label: 'Qty / Pack',    placeholder: 'e.g. 10 pcs',                  span: 1 },
-  { key: 'manufacturer', label: 'Manufacturer',  placeholder: 'e.g. Ganpati Foods Pvt. Ltd.', span: 2 },
+  { key: 'manufacturer', label: 'Brand Name',          placeholder: 'e.g. Jaquar',                          span: 2 },
+  { key: 'logoUrl',      label: 'Brand Logo URL',      placeholder: 'Paste logo image URL',                 span: 2 },
+  { key: 'code',         label: 'Product Code',        placeholder: 'e.g. ALD-CHR-070N',                    span: 1 },
+  { key: 'price',        label: 'Product Price (₹)',   placeholder: 'e.g. 3800.00',                         span: 1 },
+  { key: 'product',      label: 'Product Name',        placeholder: 'e.g. Concealed Body Diverter',         span: 2 },
+  { key: 'description',  label: 'Product Description', placeholder: 'e.g. High quality brass body diverter', span: 2 },
 ];
 
-const emptyLabel = () => ({ product: '', code: '', price: '', size: '', qty: '', manufacturer: '' });
+const emptyLabel = () => ({
+  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '',
+});
 const isFilled   = (l) => !!(l.product?.trim() || l.code?.trim() || l.price?.trim());
 
 function Icon({ d, size = 13, sw = 2 }) {
@@ -77,20 +79,29 @@ function LabelCard({ index, label, onChange, onDuplicateToAll, onReset, isActive
       {open && (
         <div style={{ padding: 14, background: '#0f172a', borderTop: '1px solid #1e293b' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {FIELDS.map(({ key, label: fl, placeholder, span }) => (
-              <div key={key} style={{ gridColumn: span === 2 ? '1 / -1' : undefined }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4, letterSpacing: '0.05em' }}>
-                  {fl}
-                </label>
-                <input
-                  type="text"
-                  value={label[key]}
-                  onChange={e => onChange(key, e.target.value)}
-                  placeholder={placeholder}
-                  className="input-dark"
-                  style={{ fontSize: 12, padding: '7px 10px' }}
-                />
-              </div>
+            {FIELDS.map(({ key, label: fl, placeholder, span, section }) => (
+              <React.Fragment key={key}>
+                {section && (
+                  <div style={{
+                    gridColumn: '1 / -1', fontSize: 10, fontWeight: 700,
+                    color: '#f97316', letterSpacing: '0.08em', textTransform: 'uppercase',
+                    paddingTop: 8, borderTop: '1px solid #334155', marginTop: 2,
+                  }}>{section}</div>
+                )}
+                <div style={{ gridColumn: span === 2 ? '1 / -1' : undefined }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4, letterSpacing: '0.05em' }}>
+                    {fl}
+                  </label>
+                  <input
+                    type="text"
+                    value={label[key] || ''}
+                    onChange={e => onChange(key, e.target.value)}
+                    placeholder={placeholder}
+                    className="input-dark"
+                    style={{ fontSize: 12, padding: '7px 10px' }}
+                  />
+                </div>
+              </React.Fragment>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -211,18 +222,27 @@ export default function LabelEditor({ labels, setLabels }) {
             APPLY TO ALL LABELS
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {FIELDS.map(({ key, label, placeholder, span }) => (
-              <div key={key} style={{ gridColumn: span === 2 ? '1 / -1' : undefined }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>{label}</label>
-                <input
-                  type="text"
-                  value={applyAll[key]}
-                  onChange={e => setApplyAll(a => ({ ...a, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="input-dark"
-                  style={{ fontSize: 12, padding: '7px 10px', borderColor: 'rgba(249,115,22,0.25)' }}
-                />
-              </div>
+            {FIELDS.map(({ key, label, placeholder, span, section }) => (
+              <React.Fragment key={key}>
+                {section && (
+                  <div style={{
+                    gridColumn: '1 / -1', fontSize: 10, fontWeight: 700,
+                    color: '#f97316', letterSpacing: '0.08em', textTransform: 'uppercase',
+                    paddingTop: 8, borderTop: '1px solid rgba(249,115,22,0.2)', marginTop: 2,
+                  }}>{section}</div>
+                )}
+                <div style={{ gridColumn: span === 2 ? '1 / -1' : undefined }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>{label}</label>
+                  <input
+                    type="text"
+                    value={applyAll[key]}
+                    onChange={e => setApplyAll(a => ({ ...a, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="input-dark"
+                    style={{ fontSize: 12, padding: '7px 10px', borderColor: 'rgba(249,115,22,0.25)' }}
+                  />
+                </div>
+              </React.Fragment>
             ))}
           </div>
           <button onClick={handleApplyAll} className="btn-saffron" style={{ width: '100%', justifyContent: 'center', marginTop: 12, padding: 10 }}>

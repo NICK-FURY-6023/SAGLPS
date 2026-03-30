@@ -1,181 +1,104 @@
-import { QRCodeSVG } from 'qrcode.react';
-
 /*
- * Jaquar-style product label — 105mm × 48mm
- * Layout (top→bottom):
- *   ┌─────────────────────────────────────────────────┐
- *   │  [QR] BRAND        │ Size │ Qty │ MRP(Per Piece)│
- *   │       Code#         │ ---- │ 1N  │ ₹3800.00     │
- *   ├─────────────────────┴──────┴─────┴──────────────┤
- *   │  PRODUCT DESCRIPTION TEXT IN BOLD UPPERCASE      │
- *   │  MULTI-LINE IF NEEDED                            │
- *   ├──────────────────────────────────────────────────┤
- *   │  Mfg By: CODE           Mth/Yr of Mfg: ----    │
- *   │  MANUFACTURER NAME                    MADE IN X │
- *   └──────────────────────────────────────────────────┘
+ * Clean product label — 105mm × 48mm
+ * ┌────────┬─────────────────────────────────────────┐
+ * │        │ Product Code  :  ALD-CHR-070N            │
+ * │ [LOGO] │ Product Name  :  CONCEALED BODY DIVERTER │
+ * │        │ Product Desc  :  High quality brass...   │
+ * │        │ Product Price :  ₹ 3,800.00              │
+ * └────────┴─────────────────────────────────────────┘
  */
 
 function LabelCell({ label, fontScale = 1 }) {
   const brand = label.manufacturer?.trim() || '';
-  const brandDisplay = brand ? brand.toUpperCase().split(/\s+/).slice(0, 3).join(' ') : '';
-  const qrVal = (label.code?.trim() || label.product?.trim() || 'N/A').substring(0, 100);
-  const s = (pt) => (pt * fontScale) + 'pt';
+  const code = label.code?.trim() || '';
+  const product = label.product?.trim() || '';
+  const description = label.description?.trim() || '';
+  const price = label.price?.trim() || '';
+  const logoUrl = label.logoUrl?.trim() || '';
+  const s = (pt) => `${pt * fontScale}pt`;
+  const B = '0.2mm solid #222';
 
-  // Outer label box — all in inline styles to bypass Tailwind resets
   return (
     <div style={{
       width: '100%', height: '100%',
-      border: '0.3mm solid #222',
-      boxSizing: 'border-box',
-      padding: '1.2mm 1.5mm',
+      border: B, boxSizing: 'border-box',
       fontFamily: 'Arial, Helvetica, sans-serif',
-      color: '#000',
-      display: 'flex', flexDirection: 'column',
+      color: '#000', display: 'flex',
       overflow: 'hidden',
-      WebkitPrintColorAdjust: 'exact',
-      printColorAdjust: 'exact',
-      position: 'relative',
+      WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
     }}>
 
-      {/* ── ROW 1: Brand+QR left | Size/Qty/MRP table right ── height ~14mm */}
+      {/* ── LEFT — Brand Logo (top-left corner) ── */}
       <div style={{
-        display: 'flex', alignItems: 'stretch',
-        borderBottom: '0.3mm solid #222',
-        paddingBottom: '1mm', marginBottom: '0.8mm',
-        minHeight: '12mm', maxHeight: '14mm',
-        flexShrink: 0,
+        width: '22mm', flexShrink: 0, borderRight: B,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1mm', overflow: 'hidden',
       }}>
-        {/* Left side: QR + Brand + Code */}
-        <div style={{
-          display: 'flex', gap: '1.5mm', alignItems: 'flex-start',
-          flex: '1 1 auto', minWidth: 0, overflow: 'hidden',
-        }}>
-          <div style={{ flexShrink: 0, width: '10mm', height: '10mm' }}>
-            <QRCodeSVG
-              value={qrVal}
-              size={38}
-              style={{ width: '10mm', height: '10mm', display: 'block' }}
-            />
-          </div>
-          <div style={{ minWidth: 0, overflow: 'hidden', paddingTop: '0.3mm' }}>
-            {brandDisplay ? (
-              <div style={{
-                fontSize: s(9), fontWeight: 900, color: '#000',
-                lineHeight: 1.1, whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{brandDisplay}</div>
-            ) : (
-              <div style={{ fontSize: s(7), color: '#bbb' }}>BRAND</div>
-            )}
-            {label.code?.trim() && (
-              <div style={{
-                fontSize: s(7), fontWeight: 800, color: '#000',
-                marginTop: '0.5mm',
-              }}>{label.code}</div>
-            )}
-          </div>
+        {logoUrl ? (
+          <img src={logoUrl} alt={brand} style={{
+            maxWidth: '100%', maxHeight: '100%',
+            objectFit: 'contain',
+          }} />
+        ) : (
+          <span style={{
+            fontSize: s(10), fontWeight: 700, fontStyle: 'italic',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            textAlign: 'center', wordBreak: 'break-word',
+            lineHeight: 1.1,
+          }}>
+            {brand || <span style={{ color: '#ccc', fontStyle: 'normal', fontWeight: 400, fontSize: s(7) }}>Brand</span>}
+          </span>
+        )}
+      </div>
+
+      {/* ── RIGHT — Product Details ── */}
+      <div style={{
+        flex: '1 1 auto', display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', padding: '1.5mm 2.5mm',
+        overflow: 'hidden', minWidth: 0, gap: '1mm',
+      }}>
+        {/* Product Code */}
+        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Code</span>
+          <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
+          <span style={{ fontWeight: 700 }}>{code || '----'}</span>
         </div>
 
-        {/* Right side: Size/Qty/MRP table */}
-        <table style={{
-          borderCollapse: 'collapse', flexShrink: 0,
-          marginLeft: '1mm', alignSelf: 'flex-start',
-        }}>
-          <thead>
-            <tr>
-              {['Size', 'Qty'].map(h => (
-                <th key={h} style={{
-                  border: '0.3mm solid #222',
-                  padding: '0.4mm 1.8mm',
-                  fontSize: s(6.5), fontWeight: 900, color: '#000',
-                  textAlign: 'center', whiteSpace: 'nowrap',
-                  lineHeight: 1.2,
-                }}>{h}</th>
-              ))}
-              <th style={{
-                border: '0.3mm solid #222',
-                padding: '0.4mm 1.8mm',
-                fontSize: s(5.5), fontWeight: 900, color: '#000',
-                textAlign: 'center', whiteSpace: 'nowrap',
-                lineHeight: 1.2,
-              }}>MRP (Per Piece)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
-                fontSize: s(7), fontWeight: 800, color: '#000', textAlign: 'center',
-              }}>{label.size?.trim() || '----'}</td>
-              <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
-                fontSize: s(7), fontWeight: 800, color: '#000', textAlign: 'center',
-              }}>{label.qty?.trim() || '----'}</td>
-              <td style={{
-                border: '0.3mm solid #222', padding: '0.3mm 1.8mm',
-                textAlign: 'center', verticalAlign: 'middle',
-              }}>
-                <div style={{ fontSize: s(9), fontWeight: 900, color: '#000', lineHeight: 1.1 }}>
-                  {label.price?.trim() ? `₹${label.price}` : '----'}
-                </div>
-                {label.price?.trim() && (
-                  <div style={{ fontSize: s(4.5), color: '#333', lineHeight: 1, marginTop: '0.2mm' }}>
-                    (Incl. Of All Taxes)
-                  </div>
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── ROW 2: Product description — fills remaining space ~20mm ── */}
-      <div style={{
-        flex: '1 1 auto',
-        display: 'flex', alignItems: 'flex-start',
-        overflow: 'hidden',
-        padding: '0.5mm 0',
-      }}>
-        {label.product?.trim() ? (
-          <div style={{
-            fontSize: s(8.5), fontWeight: 900, color: '#000',
-            lineHeight: 1.3, textTransform: 'uppercase',
-            wordBreak: 'break-word',
-            overflow: 'hidden',
-            maxHeight: '100%',
-          }}>{label.product}</div>
-        ) : (
-          <div style={{ fontSize: s(7), color: '#ccc' }}>PRODUCT DESCRIPTION</div>
-        )}
-      </div>
-
-      {/* ── ROW 3: Manufacturer bottom bar ~10mm ── */}
-      <div style={{
-        borderTop: '0.3mm solid #222',
-        paddingTop: '0.8mm',
-        flexShrink: 0,
-        overflow: 'hidden',
-      }}>
-        {/* Manufactured By row */}
-        {label.code?.trim() && (
-          <div style={{
-            display: 'flex', gap: '2mm', marginBottom: '0.5mm',
-            fontSize: s(5.5), color: '#222', lineHeight: 1.2,
+        {/* Product Name */}
+        <div style={{ display: 'flex', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Name</span>
+          <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
+          <span style={{
+            fontWeight: 700, textTransform: 'uppercase', wordBreak: 'break-word',
+            overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
           }}>
-            <span><b style={{ fontWeight: 800 }}>Manufactured By:</b> {label.code}</span>
-          </div>
-        )}
-        {/* Company name */}
-        {brand ? (
-          <div style={{
-            fontSize: s(7.5), fontWeight: 900, color: '#000',
-            lineHeight: 1.15, textTransform: 'uppercase',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{brand}</div>
-        ) : (
-          <div style={{ fontSize: s(6), color: '#ccc' }}>MANUFACTURER</div>
-        )}
+            {product || '----'}
+          </span>
+        </div>
+
+        {/* Product Description */}
+        <div style={{ display: 'flex', fontSize: s(6), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm', fontSize: s(7) }}>Product Desc</span>
+          <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm', fontSize: s(7) }}>:</span>
+          <span style={{
+            fontWeight: 600, wordBreak: 'break-word',
+            overflow: 'hidden', display: '-webkit-box',
+            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          }}>
+            {description || '----'}
+          </span>
+        </div>
+
+        {/* Product Price */}
+        <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3 }}>
+          <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '22mm' }}>Product Price</span>
+          <span style={{ fontWeight: 800, flexShrink: 0, marginRight: '1.5mm' }}>:</span>
+          <span style={{ fontWeight: 900, fontSize: s(8.5) }}>
+            {price ? `\u20B9 ${price}` : '----'}
+          </span>
+        </div>
       </div>
+
     </div>
   );
 }
@@ -185,7 +108,7 @@ export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1 }
   return (
     <div
       className="sheet print-sheet"
-      style={extraTopMargin !== 0 ? { paddingTop: `${4.5 + extraTopMargin}mm`, paddingBottom: `${4.5 - extraTopMargin}mm` } : undefined}
+      style={extraTopMargin !== 0 ? { paddingTop: `${1 + extraTopMargin}mm`, paddingBottom: `${1 - extraTopMargin}mm` } : undefined}
     >
       {safeLabels.map((label, i) => (
         <LabelCell key={i} label={label} fontScale={fontScale} />
