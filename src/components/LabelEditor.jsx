@@ -23,7 +23,13 @@ function loadProductDB() {
   _productDBPromise = fetch('/jaquar-products.json')
     .then(r => r.ok ? r.json() : [])
     .then(data => { _productDB = data; _productDBReady = true; return data; })
-    .catch(() => { _productDB = []; _productDBReady = true; return []; });
+    .catch(() => {
+      // Bug #5 fix: allow retry on failure instead of caching empty forever
+      _productDB = null;
+      _productDBPromise = null;
+      _productDBReady = false;
+      return [];
+    });
   return _productDBPromise;
 }
 
@@ -156,8 +162,9 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
     loadProductDB().then(db => setProductDB(db));
   }, []);
 
-  // Instant local search when query changes
+  // Bug #13 fix: cancelled flag to prevent stale search results
   useEffect(() => {
+    let cancelled = false;
     if (!debouncedQuery || debouncedQuery.length < 2) {
       setSearchResults([]);
       setSearchLoading(false);
@@ -165,22 +172,23 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
       return;
     }
     if (!productDB) {
-      // DB still loading — show spinner
       setSearchLoading(true);
       setShowDropdown(true);
       loadProductDB().then(db => {
+        if (cancelled) return;
         setProductDB(db);
         const results = searchLocal(debouncedQuery, db);
         setSearchResults(results);
         setSearchLoading(false);
         setShowDropdown(true);
       });
-      return;
+      return () => { cancelled = true; };
     }
     const results = searchLocal(debouncedQuery, productDB);
     setSearchResults(results);
     setSearchLoading(false);
     setShowDropdown(true);
+    return () => { cancelled = true; };
   }, [debouncedQuery, productDB]);
 
   // Close dropdown on outside click
@@ -396,6 +404,11 @@ export default function LabelEditor({ labels, setLabels }) {
   const [applyPanelOpen, setApplyPanelOpen] = useState(false);
   const [dragIdx, setDragIdx]               = useState(null);
   const [dragOverIdx, setDragOverIdx]       = useState(null);
+
+  // Bug #3 fix: clamp activeIndex when labels array changes
+  useEffect(() => {
+    if (activeIndex >= labels.length) setActiveIndex(Math.max(0, labels.length - 1));
+  }, [labels.length, activeIndex]);
 
   const updateLabel    = (index, key, value) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, [key]: value } : l));
   const updateLabelMulti = (index, fields) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, ...fields } : l));

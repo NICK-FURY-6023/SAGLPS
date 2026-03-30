@@ -110,7 +110,10 @@ export default function LabelPreview({
       const logoCache = {};
       const qrCache = {};
       for (const pageLabels of allPages) {
-        const safeLabels = Array.from({ length: 12 }, (_, i) => pageLabels[i] || {});
+        const safeLabels = Array.from({ length: 12 }, (_, i) => ({
+          product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '',
+          ...(pageLabels[i] || {})
+        }));
         for (const l of safeLabels) {
           const url = l.logoUrl?.trim() || '/jaquar-logo.png';
           if (!logoCache[url]) logoCache[url] = await loadImg(url);

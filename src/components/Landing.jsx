@@ -144,26 +144,32 @@ function Particles() {
     const cv = ref.current;
     if (!cv) return;
     const ctx = cv.getContext('2d');
-    const resize = () => { cv.width = window.innerWidth; cv.height = window.innerHeight; };
+    let w = window.innerWidth, h = window.innerHeight;
+    const resize = () => { w = window.innerWidth; h = window.innerHeight; cv.width = w; cv.height = h; };
     resize();
     window.addEventListener('resize', resize);
     const pts = Array.from({ length: 40 }, () => ({
-      x: Math.random() * cv.width, y: Math.random() * cv.height,
+      x: Math.random() * w, y: Math.random() * h,
       r: Math.random() * 1.5 + 0.3,
       dx: (Math.random() - 0.5) * 0.25, dy: (Math.random() - 0.5) * 0.25,
       a: Math.random() * 0.35 + 0.05,
     }));
     let raf;
+    let paused = false;
+    // Bug #7 fix: pause animation when off-screen
+    const obs = new IntersectionObserver(([e]) => { paused = !e.isIntersecting; }, { threshold: 0 });
+    obs.observe(cv);
     const draw = () => {
-      ctx.clearRect(0, 0, cv.width, cv.height);
+      if (paused) { raf = requestAnimationFrame(draw); return; }
+      ctx.clearRect(0, 0, w, h);
       pts.forEach(p => {
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(249,115,22,${p.a})`; ctx.fill();
         p.x += p.dx; p.y += p.dy;
-        if (p.x < 0 || p.x > cv.width) p.dx *= -1;
-        if (p.y < 0 || p.y > cv.height) p.dy *= -1;
+        // Bug #7 fix: clamp to current bounds on resize
+        if (p.x < 0 || p.x > w) { p.dx *= -1; p.x = Math.max(0, Math.min(w, p.x)); }
+        if (p.y < 0 || p.y > h) { p.dy *= -1; p.y = Math.max(0, Math.min(h, p.y)); }
       });
-      // Optimized: avoid .slice() allocation, use index-based loop
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i];
         for (let j = i + 1; j < pts.length; j++) {
@@ -180,7 +186,7 @@ function Particles() {
       raf = requestAnimationFrame(draw);
     };
     draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+    return () => { cancelAnimationFrame(raf); obs.disconnect(); window.removeEventListener('resize', resize); };
   }, []);
   return <canvas ref={ref} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />;
 }
@@ -253,11 +259,12 @@ function SearchMockup() {
   ];
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timers = [];
+    timers.push(setTimeout(() => {
       setQuery('ALD');
-      setTimeout(() => setShowResults(true), 400);
-    }, 2000);
-    return () => clearTimeout(t);
+      timers.push(setTimeout(() => setShowResults(true), 400));
+    }, 2000));
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   return (

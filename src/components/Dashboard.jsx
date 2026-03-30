@@ -516,37 +516,53 @@ export default function Dashboard() {
 
   // Current page's labels (derived)
   const labels = pages[currentPage] || initialLabels();
+  // Bug #2 fix: use functional setPages to avoid stale currentPage
   const setLabels = useCallback((newLabelsOrFn) => {
     pushUndo(pages);
     setPages(prev => {
       const updated = [...prev];
       const page = Math.min(currentPage, prev.length - 1);
+      if (page < 0 || page >= prev.length) return prev;
       updated[page] = typeof newLabelsOrFn === 'function' ? newLabelsOrFn(prev[page]) : newLabelsOrFn;
       return updated;
     });
   }, [currentPage, pages, pushUndo]);
 
+  // Bug #1 fix: use functional update to avoid stale pages.length
   const addPage = useCallback(() => {
-    setPages(prev => [...prev, initialLabels()]);
-    setCurrentPage(pages.length);
-    toast.success(`Page ${pages.length + 1} added`);
-  }, [pages.length]);
+    setPages(prev => {
+      const updated = [...prev, initialLabels()];
+      setCurrentPage(updated.length - 1);
+      toast.success(`Page ${updated.length} added`);
+      return updated;
+    });
+  }, []);
 
+  // Bug #1 fix: move currentPage update inside setPages callback
   const removePage = useCallback((idx) => {
-    if (pages.length <= 1) { toast.error('Cannot remove the last page'); return; }
-    if (!confirm(`Remove page ${idx + 1}? All labels on this page will be lost.`)) return;
-    setPages(prev => prev.filter((_, i) => i !== idx));
-    if (currentPage >= pages.length - 1) setCurrentPage(Math.max(0, pages.length - 2));
-    else if (currentPage > idx) setCurrentPage(currentPage - 1);
-    toast.success(`Page ${idx + 1} removed`);
-  }, [pages.length, currentPage]);
+    setPages(prev => {
+      if (prev.length <= 1) { toast.error('Cannot remove the last page'); return prev; }
+      if (!confirm(`Remove page ${idx + 1}? All labels on this page will be lost.`)) return prev;
+      const updated = prev.filter((_, i) => i !== idx);
+      setCurrentPage(cp => {
+        if (cp >= updated.length) return Math.max(0, updated.length - 1);
+        if (cp > idx) return cp - 1;
+        return cp;
+      });
+      toast.success(`Page ${idx + 1} removed`);
+      return updated;
+    });
+  }, []);
 
   const duplicatePage = useCallback((idx) => {
-    const copy = JSON.parse(JSON.stringify(pages[idx]));
-    setPages(prev => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
-    setCurrentPage(idx + 1);
-    toast.success(`Page ${idx + 1} duplicated`);
-  }, [pages]);
+    setPages(prev => {
+      const copy = JSON.parse(JSON.stringify(prev[idx]));
+      const updated = [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
+      setCurrentPage(idx + 1);
+      toast.success(`Page ${idx + 1} duplicated`);
+      return updated;
+    });
+  }, []);
 
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [templateManagerMode, setTemplateManagerMode] = useState('load');
@@ -621,30 +637,31 @@ export default function Dashboard() {
     return () => clearInterval(periodicSaveTimer.current);
   }, [pages]);
 
-  // Keyboard shortcuts
+  // Bug #8 fix: useRef pattern — single stable listener, no dep churn
+  const actionsRef = useRef({ handlePrint: null, openSave: null, handleUndo: null, handleRedo: null });
+  useEffect(() => { actionsRef.current = { handlePrint, openSave, handleUndo, handleRedo }; });
   const stateRef = useRef({ pages, copies, currentTemplateName, currentPage });
   useEffect(() => { stateRef.current = { pages, copies, currentTemplateName, currentPage }; });
   useEffect(() => {
     const handler = (e) => {
       const s = stateRef.current;
+      const a = actionsRef.current;
       const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault(); handlePrint();
+        e.preventDefault(); a.handlePrint();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault(); openSave();
+        e.preventDefault(); a.openSave();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault(); handleUndo();
+        e.preventDefault(); a.handleUndo();
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') {
-        e.preventDefault(); handleRedo();
+        e.preventDefault(); a.handleRedo();
       }
-      // ? key for shortcuts modal
       if (e.key === '?' && !inInput) {
         setShowShortcuts(o => !o);
       }
-      // Ctrl+Left/Right for page nav
       if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft' && !inInput) {
         e.preventDefault();
         setCurrentPage(p => Math.max(0, p - 1));
@@ -656,7 +673,7 @@ export default function Dashboard() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleUndo, handleRedo]);
+  }, []);
 
   const openSave = useCallback(() => { setTemplateManagerMode('save'); setShowTemplateManager(true); }, []);
   const openLoad = useCallback(() => { setTemplateManagerMode('load'); setShowTemplateManager(true); }, []);
@@ -729,9 +746,9 @@ export default function Dashboard() {
 
   const handleCSVExport = useCallback(() => {
     const allLabels = pages.flat();
-    const header = 'product,code,description,price,logo,productUrl';
+    const header = 'manufacturer,logoUrl,code,product,description,price,productUrl';
     const rows = allLabels.map(l =>
-      [l.product, l.code, l.description, l.price, l.logo, l.productUrl]
+      [l.manufacturer, l.logoUrl, l.code, l.product, l.description, l.price, l.productUrl]
         .map(v => `"${(v || '').replace(/"/g, '""')}"`)
         .join(',')
     );
@@ -745,6 +762,9 @@ export default function Dashboard() {
   }, [pages]);
 
   const jsonInputRef = useRef(null);
+
+  // Bug #19/#20 fix: validate label objects on import
+  const isValidLabel = (l) => typeof l === 'object' && l !== null && !Array.isArray(l);
 
   const handleJSONImport = () => {
     if (!jsonInputRef.current) {
@@ -762,14 +782,22 @@ export default function Dashboard() {
           const data = JSON.parse(ev.target.result);
           let loadedPages;
           if (data.pages && Array.isArray(data.pages)) {
-            loadedPages = data.pages.map(page =>
-              Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
-            );
+            loadedPages = data.pages.map(page => {
+              if (!Array.isArray(page)) return initialLabels();
+              return Array.from({ length: 12 }, (_, i) => {
+                const item = page[i];
+                return { ...emptyLabel(), ...(isValidLabel(item) ? item : {}) };
+              });
+            });
           } else {
             const arr = Array.isArray(data) ? data : (data.labels || []);
             if (!arr.length) { toast.error('Invalid JSON format'); return; }
-            loadedPages = [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }))];
+            loadedPages = [Array.from({ length: 12 }, (_, i) => {
+              const item = arr[i];
+              return { ...emptyLabel(), ...(isValidLabel(item) ? item : {}) };
+            })];
           }
+          if (!loadedPages.length) { toast.error('No valid pages found'); return; }
           setPages(loadedPages);
           setCurrentPage(0);
           if (data.templateName) setCurrentTemplateName(data.templateName);

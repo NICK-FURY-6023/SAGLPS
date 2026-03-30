@@ -145,10 +145,23 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
 
     </div>
   );
-});
+// Bug #12 fix: custom comparator so memo actually prevents re-renders
+}, (prev, next) =>
+  prev.fontScale === next.fontScale &&
+  prev.label.code === next.label.code &&
+  prev.label.product === next.label.product &&
+  prev.label.description === next.label.description &&
+  prev.label.price === next.label.price &&
+  prev.label.logoUrl === next.label.logoUrl &&
+  prev.label.manufacturer === next.label.manufacturer &&
+  prev.label.productUrl === next.label.productUrl
+);
+
+// Bug #4 fix: proper default label so .trim() never hits undefined
+const defaultLabel = { product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '' };
 
 export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1 }) {
-  const safeLabels = Array.from({ length: 12 }, (_, i) => labels[i] || {});
+  const safeLabels = Array.from({ length: 12 }, (_, i) => ({ ...defaultLabel, ...(labels[i] || {}) }));
   return (
     <div
       className="sheet print-sheet"

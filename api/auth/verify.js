@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL || '*';
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://printer-image-generator.vercel.app';
 
 module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
