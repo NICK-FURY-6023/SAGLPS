@@ -100,7 +100,7 @@ export default function LabelPreview({
           const c = document.createElement('canvas');
           c.width = img.naturalWidth; c.height = img.naturalHeight;
           c.getContext('2d').drawImage(img, 0, 0);
-          return { data: c.toDataURL('image/jpeg', 0.8), w: img.naturalWidth, h: img.naturalHeight };
+          return { data: c.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight };
         } catch { return null; }
       }
 
@@ -150,7 +150,7 @@ export default function LabelPreview({
             const pad = 2;
             const fit = fitImg(logo, LOGO_W - pad * 2, CH - pad * 2);
             try {
-              pdf.addImage(logo.data, 'JPEG',
+              pdf.addImage(logo.data, 'PNG',
                 cx + (LOGO_W - fit.w) / 2, cy + (CH - fit.h) / 2, fit.w, fit.h);
             } catch { /* skip */ }
           } else {
