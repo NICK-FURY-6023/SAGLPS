@@ -10,17 +10,44 @@ const FIELDS = [
 ];
 
 /* ── Jaquar Search helpers ── */
-const SEARCH_API = '/api/jaquar-search';
 const PRODUCT_API = '/api/jaquar-product';
-const PRICE_API = '/api/jaquar-price';
 
-async function searchJaquar(query) {
-  if (!query || query.length < 3) return [];
-  try {
-    const res = await fetch(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch { return []; }
+// Preloaded product database (loaded once from static JSON)
+let _productDB = null;
+let _productDBPromise = null;
+
+function loadProductDB() {
+  if (_productDB) return Promise.resolve(_productDB);
+  if (_productDBPromise) return _productDBPromise;
+  _productDBPromise = fetch('/jaquar-products.json')
+    .then(r => r.ok ? r.json() : [])
+    .then(data => { _productDB = data; return data; })
+    .catch(() => { _productDB = []; return []; });
+  return _productDBPromise;
+}
+
+// Instant client-side search against preloaded DB
+function searchLocal(query, db) {
+  if (!query || query.length < 2 || !db || !db.length) return [];
+  const q = query.toUpperCase().replace(/[-\s]/g, '');
+  const results = [];
+  for (const p of db) {
+    const code = (p.code || '').toUpperCase().replace(/[-\s]/g, '');
+    const name = (p.name || '').toUpperCase();
+    if (code.includes(q) || name.includes(q)) {
+      results.push(p);
+      if (results.length >= 30) break;
+    }
+  }
+  // Sort: exact code prefix first
+  results.sort((a, b) => {
+    const ac = (a.code || '').toUpperCase().replace(/[-\s]/g, '');
+    const bc = (b.code || '').toUpperCase().replace(/[-\s]/g, '');
+    const aStart = ac.startsWith(q) ? 0 : 1;
+    const bStart = bc.startsWith(q) ? 0 : 1;
+    return aStart - bStart;
+  });
+  return results;
 }
 
 async function fetchJaquarProduct(url) {
@@ -31,16 +58,7 @@ async function fetchJaquarProduct(url) {
   } catch { return null; }
 }
 
-async function fetchJaquarPrice(code) {
-  if (!code) return null;
-  try {
-    const res = await fetch(`${PRICE_API}?code=${encodeURIComponent(code)}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch { return null; }
-}
-
-function useDebounce(value, delay = 400) {
+function useDebounce(value, delay = 150) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value), delay);
@@ -61,7 +79,7 @@ function JaquarSearchDropdown({ results, loading, onSelect, visible }) {
     }}>
       {loading && (
         <div style={{ padding: '10px 12px', fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="jq-spinner" /> Jaquar se search ho raha hai...
+          <span className="jq-spinner" /> Search ho raha hai...
         </div>
       )}
       {!loading && results.length === 0 && (
@@ -84,9 +102,14 @@ function JaquarSearchDropdown({ results, loading, onSelect, visible }) {
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.02em' }}>{p.code}</div>
-            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
               {p.name}
             </div>
+            {p.price && (
+              <div style={{ fontSize: 10, color: '#22c55e', marginTop: 1, fontWeight: 600 }}>
+                MRP ₹{p.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
+            )}
           </div>
         </button>
       ))}
@@ -122,27 +145,25 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [fetchingDetail, setFetchingDetail] = useState(false);
-  const debouncedQuery = useDebounce(searchQuery, 300);
+  const [productDB, setProductDB] = useState(null);
+  const debouncedQuery = useDebounce(searchQuery, 150);
   const wrapperRef = useRef(null);
 
-  // Trigger search when debounced query changes
+  // Preload product database on first mount
+  useEffect(() => { loadProductDB().then(setProductDB); }, []);
+
+  // Instant local search when query changes
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 3) {
+    if (!debouncedQuery || debouncedQuery.length < 2 || !productDB) {
       setSearchResults([]);
       setSearchLoading(false);
       return;
     }
-    let cancelled = false;
-    setSearchLoading(true);
-    searchJaquar(debouncedQuery).then(results => {
-      if (!cancelled) {
-        setSearchResults(results);
-        setSearchLoading(false);
-        setShowDropdown(true);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [debouncedQuery]);
+    const results = searchLocal(debouncedQuery, productDB);
+    setSearchResults(results);
+    setSearchLoading(false);
+    setShowDropdown(results.length > 0);
+  }, [debouncedQuery, productDB]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -159,7 +180,7 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
     onChange(key, value);
     setSearchField(key);
     setSearchQuery(value);
-    if (value.length >= 3) setSearchLoading(true);
+    if (value.length >= 2) setSearchLoading(true);
     else { setShowDropdown(false); setSearchResults([]); }
   };
 
@@ -167,43 +188,31 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
     setShowDropdown(false);
     setSearchQuery('');
     setSearchResults([]);
-    setFetchingDetail(true);
 
     // Build product URL for Jaquar website
     const jaquarUrl = product.url ? `https://www.jaquar.com${product.url}` : '';
 
-    // Fill basic fields immediately
+    // Fill ALL fields instantly from local DB (code, name, price)
     const fields = {
       code: product.code || '',
       product: product.name || '',
       productUrl: jaquarUrl,
     };
+    if (product.price) {
+      fields.price = product.price.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+      setPriceHint(`✅ Jaquar MRP ₹${product.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (jaquar.com)`);
+    }
     onFillMulti(fields);
 
-    // Fetch description and price in parallel
-    const [detail, priceData] = await Promise.all([
-      product.url ? fetchJaquarProduct(product.url).catch(() => null) : null,
-      product.code ? fetchJaquarPrice(product.code).catch(() => null) : null,
-    ]);
-
-    const extraFields = {};
-    if (detail && detail.description) {
-      extraFields.description = detail.description;
+    // Only fetch description on-demand (not in local DB)
+    if (product.url) {
+      setFetchingDetail(true);
+      const detail = await fetchJaquarProduct(product.url).catch(() => null);
+      if (detail && detail.description) {
+        onFillMulti({ description: detail.description });
+      }
+      setFetchingDetail(false);
     }
-
-    // Prefer price from product detail page (already has Indian IP), fallback to price API
-    const mrp = (detail && detail.priceRaw) ? detail.priceRaw
-              : (priceData && priceData.priceRaw) ? priceData.priceRaw
-              : null;
-
-    if (mrp) {
-      extraFields.price = mrp.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-      setPriceHint(`✅ Jaquar MRP ₹${mrp.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (jaquar.com)`);
-    }
-    if (Object.keys(extraFields).length > 0) {
-      onFillMulti(extraFields);
-    }
-    setFetchingDetail(false);
   };
 
   useEffect(() => {
