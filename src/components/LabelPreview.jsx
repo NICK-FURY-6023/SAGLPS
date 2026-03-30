@@ -74,53 +74,162 @@ export default function LabelPreview({
     setPdfLoading(true);
     const tid = toast.loading('Generating PDF…');
     try {
-      const { default: jsPDF }       = await import('jspdf');
-      const { default: html2canvas } = await import('html2canvas');
-      const sheet = document.querySelector('.print-sheet');
-      if (!sheet) throw new Error('Sheet not found');
-
-      // Clone sheet into an off-screen full-size container so the
-      // parent's preview transform (scale) doesn't shrink the capture.
-      const offscreen = document.createElement('div');
-      offscreen.style.cssText =
-        'position:fixed;top:0;left:0;width:210mm;height:297mm;z-index:-9999;overflow:hidden;pointer-events:none;background:#fff;';
-      const clone = sheet.cloneNode(true);
-      clone.style.transform = 'none';
-
-      // Sanitize clone: fix CSS that html2canvas can't render
-      clone.querySelectorAll('*').forEach(el => {
-        el.style.textDecoration = 'none';
-        // Replace -webkit-line-clamp (html2canvas breaks text with it)
-        if (el.style.display === '-webkit-box') {
-          el.style.display = 'block';
-          el.style.webkitLineClamp = 'unset';
-          el.style.webkitBoxOrient = 'unset';
-        }
-      });
-
-      offscreen.appendChild(clone);
-      document.body.appendChild(offscreen);
-
-      // Wait for all images inside the clone to finish loading
-      const images = clone.querySelectorAll('img');
-      await Promise.all(Array.from(images).map(img =>
-        new Promise(resolve => {
-          if (img.complete) resolve();
-          else { img.onload = img.onerror = resolve; }
-        })
-      ));
-
-      const canvas = await html2canvas(clone, {
-        scale: 2, useCORS: true, allowTaint: false,
-        backgroundColor: '#ffffff',
-        width: A4_W, height: A4_H,
-        windowWidth: A4_W, windowHeight: A4_H,
-      });
-
-      document.body.removeChild(offscreen);
+      const { default: jsPDF } = await import('jspdf');
+      const QRLib = (await import('qrcode')).default;
 
       const pdf = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait', compress: true });
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.75), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      const safeLabels = Array.from({ length: 12 }, (_, i) => labels[i] || {});
+
+      // ── Layout constants (must match CSS .sheet grid) ──
+      const PX = 3.5, GAP = 1;
+      const PY_TOP = 7 + printMargin, PY_BOT = 7 - printMargin;
+      const CW = (210 - PX * 2 - GAP) / 2;
+      const CH = (297 - PY_TOP - PY_BOT - GAP * 5) / 6;
+      const LOGO_W = 18, QR_W = 13;
+      const s = (pt) => pt * fontScale;
+      const PT2MM = 0.3528;
+
+      // ── Pre-load images ──
+      async function loadImg(url) {
+        if (!url) return null;
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = url;
+          await new Promise((r, e) => { img.onload = r; img.onerror = e; });
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          return { data: c.toDataURL('image/jpeg', 0.8), w: img.naturalWidth, h: img.naturalHeight };
+        } catch { return null; }
+      }
+
+      // Load unique logos
+      const logoCache = {};
+      for (const l of safeLabels) {
+        const url = l.logoUrl?.trim() || '/jaquar-logo.png';
+        if (!logoCache[url]) logoCache[url] = await loadImg(url);
+      }
+
+      // Generate QR codes
+      const qrCache = {};
+      for (const l of safeLabels) {
+        const url = l.productUrl?.trim();
+        if (url && !qrCache[url]) {
+          try { qrCache[url] = await QRLib.toDataURL(url, { width: 200, margin: 0, errorCorrectionLevel: 'M' }); }
+          catch { /* skip */ }
+        }
+      }
+
+      // ── Helper: fit image maintaining aspect ratio ──
+      function fitImg(img, maxW, maxH) {
+        const scale = Math.min(maxW / img.w, maxH / img.h);
+        return { w: img.w * scale, h: img.h * scale };
+      }
+
+      // ── Render pages ──
+      for (let copy = 0; copy < copies; copy++) {
+        if (copy > 0) pdf.addPage();
+
+        for (let idx = 0; idx < 12; idx++) {
+          const label = safeLabels[idx];
+          const col = idx % 2, row = Math.floor(idx / 2);
+          const cx = PX + col * (CW + GAP);
+          const cy = PY_TOP + row * (CH + GAP);
+
+          // Cell border
+          pdf.setDrawColor(34, 34, 34);
+          pdf.setLineWidth(0.2);
+          pdf.rect(cx, cy, CW, CH);
+
+          // ── Logo section ──
+          pdf.line(cx + LOGO_W, cy, cx + LOGO_W, cy + CH);
+          const logoUrl = label.logoUrl?.trim() || '/jaquar-logo.png';
+          const logo = logoCache[logoUrl];
+          if (logo) {
+            const pad = 2;
+            const fit = fitImg(logo, LOGO_W - pad * 2, CH - pad * 2);
+            try {
+              pdf.addImage(logo.data, 'JPEG',
+                cx + (LOGO_W - fit.w) / 2, cy + (CH - fit.h) / 2, fit.w, fit.h);
+            } catch { /* skip */ }
+          } else {
+            // Fallback: brand name text
+            const brand = label.manufacturer?.trim();
+            if (brand) {
+              pdf.setFontSize(s(8));
+              pdf.setFont('helvetica', 'bolditalic');
+              pdf.text(brand, cx + LOGO_W / 2, cy + CH / 2, { align: 'center', maxWidth: LOGO_W - 2 });
+            }
+          }
+
+          // ── QR code section ──
+          const pUrl = label.productUrl?.trim();
+          const qrData = pUrl ? qrCache[pUrl] : null;
+          if (qrData) {
+            pdf.line(cx + CW - QR_W, cy, cx + CW - QR_W, cy + CH);
+            const qrPad = 2;
+            const qrSize = Math.min(QR_W - qrPad * 2, CH - qrPad * 2);
+            try {
+              pdf.addImage(qrData, 'PNG',
+                cx + CW - QR_W + (QR_W - qrSize) / 2, cy + (CH - qrSize) / 2, qrSize, qrSize);
+            } catch { /* skip */ }
+          }
+
+          // ── Text section ──
+          const txtPad = 2;
+          const txtX = cx + LOGO_W + txtPad;
+          const txtEndX = cx + CW - (qrData ? QR_W : 0) - 1;
+          const txtW = txtEndX - txtX;
+          const LBL_W = 16;
+          const valX = txtX + LBL_W + 1;
+          const valW = txtW - LBL_W - 1;
+
+          const code = label.code?.trim() || '';
+          const product = label.product?.trim() || '';
+          const desc = label.description?.trim() || '';
+          const price = label.price?.trim() || '';
+
+          const textRows = [];
+          if (code)    textRows.push({ lbl: 'Product Code',  val: code,                 lblS: s(6), valS: s(6),   vBold: true,  max: 1 });
+          if (product) textRows.push({ lbl: 'Product Name',  val: product.toUpperCase(), lblS: s(6), valS: s(5.5), vBold: false, max: 2 });
+          if (desc)    textRows.push({ lbl: 'Product Desc',  val: desc,                  lblS: s(6), valS: s(5),   vBold: false, max: 2 });
+          if (price)   textRows.push({ lbl: 'Product Price', val: `Rs. ${price}`,        lblS: s(6), valS: s(7),   vBold: true,  max: 1 });
+
+          if (textRows.length === 0) continue;
+
+          // Compute line heights and wrapped text
+          const rowGap = 0.8;
+          let totalH = 0;
+          const comp = textRows.map(r => {
+            pdf.setFontSize(r.valS);
+            pdf.setFont('helvetica', r.vBold ? 'bold' : 'normal');
+            const lines = pdf.splitTextToSize(r.val, valW).slice(0, r.max);
+            const lineH = r.valS * PT2MM * 1.3;
+            const rowH = lineH * lines.length;
+            totalH += rowH;
+            return { ...r, lines, rowH, lineH };
+          });
+          totalH += rowGap * (comp.length - 1);
+
+          // Vertically center text block in cell
+          let ty = cy + (CH - totalH) / 2 + comp[0].lineH * 0.75;
+
+          for (const r of comp) {
+            // Label (bold)
+            pdf.setFontSize(r.lblS);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(r.lbl, txtX, ty);
+            pdf.text(':', txtX + LBL_W - 0.5, ty);
+            // Value
+            pdf.setFontSize(r.valS);
+            pdf.setFont('helvetica', r.vBold ? 'bold' : 'normal');
+            pdf.text(r.lines, valX, ty);
+            ty += r.rowH + rowGap;
+          }
+        }
+      }
+
       pdf.save('ganpati-labels.pdf');
       toast.success('PDF downloaded!', { id: tid });
     } catch (err) {
