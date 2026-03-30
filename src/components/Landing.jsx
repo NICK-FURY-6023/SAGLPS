@@ -147,7 +147,7 @@ function Particles() {
     const resize = () => { cv.width = window.innerWidth; cv.height = window.innerHeight; };
     resize();
     window.addEventListener('resize', resize);
-    const pts = Array.from({ length: 70 }, () => ({
+    const pts = Array.from({ length: 40 }, () => ({
       x: Math.random() * cv.width, y: Math.random() * cv.height,
       r: Math.random() * 1.5 + 0.3,
       dx: (Math.random() - 0.5) * 0.25, dy: (Math.random() - 0.5) * 0.25,
@@ -163,14 +163,20 @@ function Particles() {
         if (p.x < 0 || p.x > cv.width) p.dx *= -1;
         if (p.y < 0 || p.y > cv.height) p.dy *= -1;
       });
-      pts.forEach((a, i) => pts.slice(i + 1).forEach(b => {
-        const d = Math.hypot(a.x - b.x, a.y - b.y);
-        if (d < 100) {
-          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = `rgba(249,115,22,${0.04 * (1 - d / 100)})`;
-          ctx.lineWidth = 0.5; ctx.stroke();
+      // Optimized: avoid .slice() allocation, use index-based loop
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        for (let j = i + 1; j < pts.length; j++) {
+          const b = pts[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 100) {
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+            ctx.strokeStyle = `rgba(249,115,22,${0.04 * (1 - d / 100)})`;
+            ctx.lineWidth = 0.5; ctx.stroke();
+          }
         }
-      }));
+      }
       raf = requestAnimationFrame(draw);
     };
     draw();

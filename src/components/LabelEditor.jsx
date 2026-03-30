@@ -12,7 +12,7 @@ const FIELDS = [
 /* ── Jaquar Search helpers ── */
 const PRODUCT_API = '/api/jaquar-product';
 
-// Preloaded product database (loaded once from static JSON)
+// Product database — lazy-loaded on first search, not at module level
 let _productDB = null;
 let _productDBPromise = null;
 let _productDBReady = false;
@@ -26,9 +26,6 @@ function loadProductDB() {
     .catch(() => { _productDB = []; _productDBReady = true; return []; });
   return _productDBPromise;
 }
-
-// Start preloading immediately on module load
-loadProductDB();
 
 // Instant client-side search against preloaded DB
 function searchLocal(query, db) {

@@ -516,7 +516,7 @@ export default function Dashboard() {
 
   // Current page's labels (derived)
   const labels = pages[currentPage] || initialLabels();
-  const setLabels = (newLabelsOrFn) => {
+  const setLabels = useCallback((newLabelsOrFn) => {
     pushUndo(pages);
     setPages(prev => {
       const updated = [...prev];
@@ -524,29 +524,29 @@ export default function Dashboard() {
       updated[page] = typeof newLabelsOrFn === 'function' ? newLabelsOrFn(prev[page]) : newLabelsOrFn;
       return updated;
     });
-  };
+  }, [currentPage, pages, pushUndo]);
 
-  const addPage = () => {
+  const addPage = useCallback(() => {
     setPages(prev => [...prev, initialLabels()]);
     setCurrentPage(pages.length);
     toast.success(`Page ${pages.length + 1} added`);
-  };
+  }, [pages.length]);
 
-  const removePage = (idx) => {
+  const removePage = useCallback((idx) => {
     if (pages.length <= 1) { toast.error('Cannot remove the last page'); return; }
     if (!confirm(`Remove page ${idx + 1}? All labels on this page will be lost.`)) return;
     setPages(prev => prev.filter((_, i) => i !== idx));
     if (currentPage >= pages.length - 1) setCurrentPage(Math.max(0, pages.length - 2));
     else if (currentPage > idx) setCurrentPage(currentPage - 1);
     toast.success(`Page ${idx + 1} removed`);
-  };
+  }, [pages.length, currentPage]);
 
-  const duplicatePage = (idx) => {
+  const duplicatePage = useCallback((idx) => {
     const copy = JSON.parse(JSON.stringify(pages[idx]));
     setPages(prev => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
     setCurrentPage(idx + 1);
     toast.success(`Page ${idx + 1} duplicated`);
-  };
+  }, [pages]);
 
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [templateManagerMode, setTemplateManagerMode] = useState('load');
@@ -658,15 +658,15 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleUndo, handleRedo]);
 
-  const openSave = () => { setTemplateManagerMode('save'); setShowTemplateManager(true); };
-  const openLoad = () => { setTemplateManagerMode('load'); setShowTemplateManager(true); };
+  const openSave = useCallback(() => { setTemplateManagerMode('save'); setShowTemplateManager(true); }, []);
+  const openLoad = useCallback(() => { setTemplateManagerMode('load'); setShowTemplateManager(true); }, []);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     const totalFilled = pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
     if (!totalFilled) { toast.error('No labels filled — nothing to print!'); return; }
     logHistory('print', currentTemplateName, totalFilled, pages, copies);
     window.print();
-  };
+  }, [pages, currentTemplateName, copies]);
 
   const handleTemplateLoad = (template) => {
     const raw = template.label_data || template.labelData;
@@ -690,23 +690,23 @@ export default function Dashboard() {
     toast.success(`Loaded "${template.name}"`);
   };
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     if (!confirm('Reset all pages and labels?')) return;
     setPages([initialLabels()]);
     setCurrentPage(0);
     setCurrentTemplateName('');
     localStorage.removeItem(DRAFT_KEY);
     toast('Labels cleared');
-  };
+  }, []);
 
-  const handleCSVImport = (newLabels) => {
+  const handleCSVImport = useCallback((newLabels) => {
     setLabels(newLabels);
     setCurrentTemplateName('');
     setShowCSVImport(false);
     toast.success(`Imported ${newLabels.filter(l => l.product?.trim()).length} labels to page ${currentPage + 1}`);
-  };
+  }, [setLabels, currentPage]);
 
-  const handleTemplateApply = (template) => {
+  const handleTemplateApply = useCallback((template) => {
     pushUndo(pages);
     const newLabels = Array.from({ length: 12 }, (_, i) => ({
       ...emptyLabel(),
@@ -715,9 +715,9 @@ export default function Dashboard() {
     setLabels(newLabels);
     setCurrentTemplateName(template.name);
     toast.success(`Applied "${template.name}"`);
-  };
+  }, [pushUndo, pages, setLabels]);
 
-  const handleJSONExport = () => {
+  const handleJSONExport = useCallback(() => {
     const data = { pages, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -725,9 +725,9 @@ export default function Dashboard() {
     a.download = `ganpati-labels-${Date.now()}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 200);
     toast.success('JSON exported');
-  };
+  }, [pages, currentTemplateName]);
 
-  const handleCSVExport = () => {
+  const handleCSVExport = useCallback(() => {
     const allLabels = pages.flat();
     const header = 'product,code,description,price,logo,productUrl';
     const rows = allLabels.map(l =>
@@ -742,7 +742,7 @@ export default function Dashboard() {
     a.download = `ganpati-labels-${Date.now()}.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 200);
     toast.success('CSV exported');
-  };
+  }, [pages]);
 
   const jsonInputRef = useRef(null);
 
