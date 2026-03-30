@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
+import { getTemplates } from '../services/api';
+import { getSupabaseClient } from '../services/supabase';
 import LabelEditor from './LabelEditor';
 import LabelPreview from './LabelPreview';
 import TemplateManager from './TemplateManager';
@@ -479,7 +481,7 @@ function TemplatesGallery({ onApply, onClose }) {
 
 /* ── Dashboard ────────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -605,6 +607,12 @@ export default function Dashboard() {
   const [showTemplatesGallery, setShowTemplatesGallery] = useState(false);
   const [copies, setCopies] = useState(1);
   const [fontScale, setFontScale] = useState(1);
+  const [fieldStyles, setFieldStyles] = useState({
+    code:  { size: 1, bold: 1 },
+    name:  { size: 1, bold: 1 },
+    desc:  { size: 1, bold: 1 },
+    price: { size: 1, bold: 1 },
+  });
   const autoSaveTimer = useRef(null);
 
   // Auto-save draft (debounced on change + periodic every 30s)
@@ -636,6 +644,70 @@ export default function Dashboard() {
     }, 30000);
     return () => clearInterval(periodicSaveTimer.current);
   }, [pages]);
+
+  // ── Cloud sync via Supabase Realtime (WebSocket) ──
+  const cloudDraftId = useRef(null);
+  const pagesRef = useRef(pages);
+  const supabase = useMemo(() => getSupabaseClient(), []);
+  useEffect(() => { pagesRef.current = pages; }, [pages]);
+
+  useEffect(() => {
+    if (!supabase || !token) return;
+
+    // 1. Find or load existing cloud draft
+    supabase.from('templates').select('*').eq('name', '__auto_draft__').maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          cloudDraftId.current = data.id;
+          const hasLocal = pagesRef.current.some(p => p.some(l => l.product?.trim() || l.code?.trim()));
+          if (!hasLocal && data.label_data?.pages?.length) {
+            const loaded = data.label_data.pages.map(page =>
+              Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+            );
+            if (loaded.some(p => p.some(l => l.product?.trim() || l.code?.trim()))) {
+              setPages(loaded);
+              toast.success('☁️ Loaded draft from cloud');
+            }
+          }
+        }
+      })
+      .catch(() => {});
+
+    // 2. Subscribe to real-time template changes via WebSocket
+    const channel = supabase
+      .channel('templates-sync')
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'templates',
+        filter: 'name=eq.__auto_draft__',
+      }, (payload) => {
+        if (payload.new?.id && payload.new.id !== cloudDraftId.current) {
+          toast('📱 Draft updated from another device — open Load to restore', { icon: '☁️', duration: 5000 });
+        }
+      })
+      .subscribe();
+
+    // 3. Auto-save draft every 30s directly via Supabase (WebSocket-backed)
+    const timer = setInterval(async () => {
+      const current = pagesRef.current;
+      const hasContent = current.some(p => p.some(l => l.product?.trim() || l.code?.trim()));
+      if (!hasContent) return;
+      try {
+        const data = { pages: current };
+        if (cloudDraftId.current) {
+          await supabase.from('templates').update({ label_data: data }).eq('id', cloudDraftId.current);
+        } else {
+          const { data: result } = await supabase.from('templates')
+            .insert([{ name: '__auto_draft__', label_data: data }]).select().single();
+          if (result?.id) cloudDraftId.current = result.id;
+        }
+      } catch { /* silent — local save is backup */ }
+    }, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(timer);
+    };
+  }, [supabase, token]);
 
   // These must be defined before the keyboard handler useEffect that references them
   const openSave = useCallback(() => { setTemplateManagerMode('save'); setShowTemplateManager(true); }, []);
@@ -1058,6 +1130,8 @@ export default function Dashboard() {
             onCopiesChange={setCopies}
             fontScale={fontScale}
             onFontScaleChange={setFontScale}
+            fieldStyles={fieldStyles}
+            onFieldStylesChange={setFieldStyles}
             onPrint={handlePrint}
           />
         </div>

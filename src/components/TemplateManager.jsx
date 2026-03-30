@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/api';
+import { getSupabaseClient } from '../services/supabase';
 
 const LOCAL_KEY = 'ganpati_templates';
 
@@ -13,6 +15,8 @@ function saveLocalTemplates(arr) {
 }
 
 export default function TemplateManager({ mode, labels, onLoad, onClose }) {
+  const { token } = useAuth();
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
@@ -22,16 +26,37 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
 
   useEffect(() => { loadTemplates(); }, []);
 
+  // WebSocket: auto-refresh template list when changes happen
+  useEffect(() => {
+    if (!supabase || !token) return;
+    const channel = supabase
+      .channel('templates-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'templates' }, () => {
+        loadTemplates();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, token]);
+
   const loadTemplates = async () => {
+    if (!token) {
+      setTemplates(localTemplates());
+      setIsLocal(true);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await getTemplates();
-      setTemplates(Array.isArray(data) ? data : []);
+      const visible = (Array.isArray(data) ? data : []).filter(t => t.name !== '__auto_draft__');
+      setTemplates(visible);
       setIsLocal(false);
-    } catch {
-      // Supabase unavailable — use localStorage
+    } catch (err) {
       setTemplates(localTemplates());
       setIsLocal(true);
+      if (err?.response?.status === 401) {
+        toast.error('Session expired — showing local templates');
+      }
     } finally {
       setLoading(false);
     }
@@ -42,7 +67,7 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
     if (!name) return;
     setSaving(true);
 
-    if (isLocal) {
+    if (isLocal || !token) {
       // Save to localStorage
       const existing = localTemplates();
       const idx = existing.findIndex(t => t.name === name);
@@ -53,7 +78,8 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
       setTemplates(existing);
       setNewName('');
       setSaving(false);
-      toast.success(idx >= 0 ? `Updated "${name}"` : `Saved "${name}"`);
+      toast.success(idx >= 0 ? `Updated "${name}" (local)` : `Saved "${name}" (local)`);
+      if (!token) toast('Login to sync templates to cloud', { icon: '☁️', duration: 4000 });
       return;
     }
 
@@ -61,22 +87,26 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
       const existing = templates.find(t => t.name === name);
       if (existing) {
         await updateTemplate(existing.id, name, labels);
-        toast.success(`Updated "${name}"`);
+        toast.success(`Updated "${name}" ☁️`);
       } else {
         await createTemplate(name, labels);
-        toast.success(`Saved "${name}"`);
+        toast.success(`Saved "${name}" ☁️`);
       }
       await loadTemplates();
       setNewName('');
-    } catch {
-      // API failed — fallback to local
+    } catch (err) {
+      // Fallback to localStorage with specific error message
+      if (err?.response?.status === 401) {
+        toast.error('Session expired — saved locally');
+      } else {
+        toast.error('Cloud save failed — saved locally');
+      }
       const local = localTemplates();
       local.unshift({ id: Date.now().toString(), name, label_data: labels, created_at: new Date().toISOString() });
       saveLocalTemplates(local);
       setTemplates(local);
       setIsLocal(true);
       setNewName('');
-      toast.success(`Saved "${name}" locally (cloud unavailable)`);
     } finally {
       setSaving(false);
     }
@@ -126,9 +156,13 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
             <h2 style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>
               {mode === 'save' ? '💾 Save Template' : '📂 Load Template'}
             </h2>
-            <p style={{ fontSize: 11, color: '#475569', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 11, color: '#475569', margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
               {templates.length} template{templates.length !== 1 ? 's' : ''} saved
-              {isLocal && <span style={{ color: '#f59e0b', marginLeft: 6 }}>📁 Local storage</span>}
+              {isLocal ? (
+                <span style={{ color: '#f59e0b' }}>📁 Local</span>
+              ) : (
+                <span style={{ color: '#22c55e' }}>☁️ Cloud synced</span>
+              )}
             </p>
           </div>
           <button

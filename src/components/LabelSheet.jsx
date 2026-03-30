@@ -30,7 +30,7 @@ function useQRCode(url) {
   return dataUrl;
 }
 
-const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
+const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
@@ -39,7 +39,10 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
   const logoUrl = label.logoUrl?.trim() || '/jaquar-logo.png';
   const productUrl = label.productUrl?.trim() || '';
   const qrDataUrl = useQRCode(productUrl);
+  const fs = fieldStyles || {};
   const s = (pt) => `${pt * fontScale}pt`;
+  const sf = (pt, field) => `${pt * fontScale * (fs[field]?.size || 1)}pt`;
+  const wf = (base, field) => Math.min(950, Math.round(base * (fs[field]?.bold || 1)));
   const B = '0.2mm solid #222';
   const [logoError, setLogoError] = useState(false);
 
@@ -83,19 +86,19 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         overflow: 'hidden', minWidth: 0, gap: '0.6mm',
       }}>
         {code && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm' }}>Product Code</span>
-            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
-            <span style={{ fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: sf(7, 'code'), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: wf(900, 'code'), flexShrink: 0, minWidth: '16mm' }}>Product Code</span>
+            <span style={{ fontWeight: wf(900, 'code'), flexShrink: 0, margin: '0 0.5mm' }}>:</span>
+            <span style={{ fontWeight: wf(800, 'code'), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
           </div>
         )}
 
         {product && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(6.5), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm', fontSize: s(7) }}>Product Name</span>
-            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm', fontSize: s(7) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: sf(6.5, 'name'), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: wf(900, 'name'), flexShrink: 0, minWidth: '16mm', fontSize: sf(7, 'name') }}>Product Name</span>
+            <span style={{ fontWeight: wf(900, 'name'), flexShrink: 0, margin: '0 0.5mm', fontSize: sf(7, 'name') }}>:</span>
             <span style={{
-              fontWeight: 700, textTransform: 'uppercase', wordBreak: 'break-word',
+              fontWeight: wf(700, 'name'), textTransform: 'uppercase', wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}>
@@ -105,11 +108,11 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {description && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(5.5), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm', fontSize: s(7) }}>Product Desc</span>
-            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm', fontSize: s(7) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: sf(5.5, 'desc'), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: wf(900, 'desc'), flexShrink: 0, minWidth: '16mm', fontSize: sf(7, 'desc') }}>Product Desc</span>
+            <span style={{ fontWeight: wf(900, 'desc'), flexShrink: 0, margin: '0 0.5mm', fontSize: sf(7, 'desc') }}>:</span>
             <span style={{
-              fontWeight: 600, wordBreak: 'break-word',
+              fontWeight: wf(600, 'desc'), wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
             }}>
@@ -119,10 +122,10 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {price && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(7), lineHeight: 1.3, flexShrink: 0 }}>
-            <span style={{ fontWeight: 900, flexShrink: 0, minWidth: '16mm' }}>Product Price</span>
-            <span style={{ fontWeight: 900, flexShrink: 0, margin: '0 0.5mm' }}>:</span>
-            <span style={{ fontWeight: 900, fontSize: s(8) }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: sf(7, 'price'), lineHeight: 1.3, flexShrink: 0 }}>
+            <span style={{ fontWeight: wf(900, 'price'), flexShrink: 0, minWidth: '16mm' }}>Product Price</span>
+            <span style={{ fontWeight: wf(900, 'price'), flexShrink: 0, margin: '0 0.5mm' }}>:</span>
+            <span style={{ fontWeight: wf(900, 'price'), fontSize: sf(8, 'price') }}>
               {`\u20B9 ${price}`}
             </span>
           </div>
@@ -148,6 +151,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
 // Bug #12 fix: custom comparator so memo actually prevents re-renders
 }, (prev, next) =>
   prev.fontScale === next.fontScale &&
+  prev.fieldStyles === next.fieldStyles &&
   prev.label.code === next.label.code &&
   prev.label.product === next.label.product &&
   prev.label.description === next.label.description &&
@@ -160,7 +164,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
 // Bug #4 fix: proper default label so .trim() never hits undefined
 const defaultLabel = { product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '' };
 
-export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1 }) {
+export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1, fieldStyles }) {
   const safeLabels = Array.from({ length: 12 }, (_, i) => ({ ...defaultLabel, ...(labels[i] || {}) }));
   return (
     <div
@@ -168,7 +172,7 @@ export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1 }
       style={extraTopMargin !== 0 ? { paddingTop: `${7 + extraTopMargin}mm`, paddingBottom: `${7 - extraTopMargin}mm` } : undefined}
     >
       {safeLabels.map((label, i) => (
-        <LabelCell key={i} label={label} fontScale={fontScale} />
+        <LabelCell key={i} label={label} fontScale={fontScale} fieldStyles={fieldStyles} />
       ))}
     </div>
   );

@@ -47,6 +47,7 @@ export default function LabelPreview({
   onSave, onLoad, onPrint,
   copies = 1, onCopiesChange,
   fontScale = 1, onFontScaleChange,
+  fieldStyles, onFieldStylesChange,
 }) {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(0.6);
@@ -87,6 +88,7 @@ export default function LabelPreview({
       const CH = (297 - PY_TOP - PY_BOT - GAP * 5) / 6;
       const LOGO_W = 18, QR_W = 13;
       const s = (pt) => pt * fontScale;
+      const sf = (pt, field) => pt * fontScale * (fieldStyles?.[field]?.size || 1);
       const PT2MM = 0.3528;
 
       // ── Pre-load images ──
@@ -201,10 +203,10 @@ export default function LabelPreview({
           const price = label.price?.trim() || '';
 
           const textRows = [];
-          if (code)    textRows.push({ lbl: 'Product Code',  val: code,                 lblS: s(6), valS: s(6),   vBold: true,  max: 1 });
-          if (product) textRows.push({ lbl: 'Product Name',  val: product.toUpperCase(), lblS: s(6), valS: s(5.5), vBold: true,  max: 2 });
-          if (desc)    textRows.push({ lbl: 'Product Desc',  val: desc,                  lblS: s(6), valS: s(5),   vBold: true,  max: 2 });
-          if (price)   textRows.push({ lbl: 'Product Price', val: `Rs. ${price}`,        lblS: s(6), valS: s(7),   vBold: true,  max: 1 });
+          if (code)    textRows.push({ lbl: 'Product Code',  val: code,                 lblS: sf(6, 'code'),  valS: sf(6, 'code'),   vBold: true,  max: 1 });
+          if (product) textRows.push({ lbl: 'Product Name',  val: product.toUpperCase(), lblS: sf(6, 'name'),  valS: sf(5.5, 'name'), vBold: true,  max: 2 });
+          if (desc)    textRows.push({ lbl: 'Product Desc',  val: desc,                  lblS: sf(6, 'desc'),  valS: sf(5, 'desc'),   vBold: true,  max: 2 });
+          if (price)   textRows.push({ lbl: 'Product Price', val: `Rs. ${price}`,        lblS: sf(6, 'price'), valS: sf(7, 'price'),  vBold: true,  max: 1 });
 
           if (textRows.length === 0) continue;
 
@@ -397,8 +399,51 @@ export default function LabelPreview({
             <ToolBtn onClick={() => onFontScaleChange && onFontScaleChange(1)} variant="ghost" style={{ fontSize: 10, padding: '4px 8px' }}>Reset</ToolBtn>
           </div>
 
+          {/* ── Per-field Size & Bold sliders ── */}
+          {fieldStyles && onFieldStylesChange && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginTop: 4 }}>
+                PER-FIELD CONTROLS
+              </div>
+              {[
+                { key: 'code',  label: 'Product Code',  color: '#38bdf8' },
+                { key: 'name',  label: 'Product Name',  color: '#4ade80' },
+                { key: 'desc',  label: 'Product Desc',  color: '#facc15' },
+                { key: 'price', label: 'Product Price', color: '#fb923c' },
+              ].map(({ key, label, color }) => (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 0', borderTop: '1px solid #0f172a' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: '0.04em' }}>{label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#64748b', minWidth: 36 }}>Size</span>
+                    <input type="range" min="0.5" max="2" step="0.05"
+                      value={fieldStyles[key]?.size ?? 1}
+                      onChange={e => onFieldStylesChange(prev => ({ ...prev, [key]: { ...prev[key], size: Number(e.target.value) } }))}
+                      style={{ flex: 1, accentColor: color }} />
+                    <span style={{ fontSize: 11, color, minWidth: 36, textAlign: 'right' }}>
+                      {Math.round((fieldStyles[key]?.size ?? 1) * 100)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#64748b', minWidth: 36 }}>Bold</span>
+                    <input type="range" min="0.5" max="1.5" step="0.05"
+                      value={fieldStyles[key]?.bold ?? 1}
+                      onChange={e => onFieldStylesChange(prev => ({ ...prev, [key]: { ...prev[key], bold: Number(e.target.value) } }))}
+                      style={{ flex: 1, accentColor: color }} />
+                    <span style={{ fontSize: 11, color, minWidth: 36, textAlign: 'right' }}>
+                      {Math.round((fieldStyles[key]?.bold ?? 1) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <ToolBtn
+                onClick={() => onFieldStylesChange({ code: { size: 1, bold: 1 }, name: { size: 1, bold: 1 }, desc: { size: 1, bold: 1 }, price: { size: 1, bold: 1 } })}
+                variant="ghost" style={{ fontSize: 10, padding: '5px 10px', alignSelf: 'flex-start' }}
+              >Reset all fields</ToolBtn>
+            </>
+          )}
+
           <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
-            Adjust margin if labels print shifted up/down. Font scale resizes all label text.
+            Adjust margin if labels print shifted. Font scale resizes all text. Per-field controls adjust individual sections.
           </p>
         </div>
       )}
@@ -423,7 +468,7 @@ export default function LabelPreview({
           boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 4px 16px rgba(249,115,22,0.08)',
         }}>
           <div className="print-scale-wrapper" style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: A4_W, height: A4_H }}>
-            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
+            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} fieldStyles={fieldStyles} />
           </div>
         </div>
       </div>
@@ -433,7 +478,7 @@ export default function LabelPreview({
         <div className="print-root" style={{ display: 'none' }}>
           {Array.from({ length: copies }, (_, copyIdx) =>
             (pages || [labels]).map((pageLabels, pageIdx) => (
-              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} extraTopMargin={printMargin} fontScale={fontScale} />
+              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} extraTopMargin={printMargin} fontScale={fontScale} fieldStyles={fieldStyles} />
             ))
           )}
         </div>,
