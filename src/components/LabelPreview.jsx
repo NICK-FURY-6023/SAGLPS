@@ -85,6 +85,18 @@ export default function LabelPreview({
         'position:fixed;top:0;left:0;width:210mm;height:297mm;z-index:-9999;overflow:hidden;pointer-events:none;background:#fff;';
       const clone = sheet.cloneNode(true);
       clone.style.transform = 'none';
+
+      // Sanitize clone: fix CSS that html2canvas can't render
+      clone.querySelectorAll('*').forEach(el => {
+        el.style.textDecoration = 'none';
+        // Replace -webkit-line-clamp (html2canvas breaks text with it)
+        if (el.style.display === '-webkit-box') {
+          el.style.display = 'block';
+          el.style.webkitLineClamp = 'unset';
+          el.style.webkitBoxOrient = 'unset';
+        }
+      });
+
       offscreen.appendChild(clone);
       document.body.appendChild(offscreen);
 
@@ -98,7 +110,7 @@ export default function LabelPreview({
       ));
 
       const canvas = await html2canvas(clone, {
-        scale: 4, useCORS: true, allowTaint: false,
+        scale: 3, useCORS: true, allowTaint: false,
         backgroundColor: '#ffffff',
         width: A4_W, height: A4_H,
         windowWidth: A4_W, windowHeight: A4_H,

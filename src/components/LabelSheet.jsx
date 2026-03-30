@@ -96,8 +96,7 @@ function LabelCell({ label, fontScale = 1 }) {
             <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm', fontSize: s(6) }}>:</span>
             <span style={{
               fontWeight: 600, textTransform: 'uppercase', wordBreak: 'break-word',
-              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
+              overflow: 'hidden', maxHeight: '2.6em', lineHeight: 1.3,
             }}>
               {product}
             </span>
@@ -110,8 +109,7 @@ function LabelCell({ label, fontScale = 1 }) {
             <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 0.5mm', fontSize: s(6) }}>:</span>
             <span style={{
               fontWeight: 500, wordBreak: 'break-word',
-              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
+              overflow: 'hidden', maxHeight: '2.6em', lineHeight: 1.3,
             }}>
               {description}
             </span>
