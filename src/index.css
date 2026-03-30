@@ -58,18 +58,18 @@
   @page { size: A4; margin: 0; }
 }
 
-/* ─── Sheet grid — exact 105×48mm labels, 2×6 on A4 ── */
+/* ─── Sheet grid — OUTSIDE @layer so it can't be overridden ── */
 .sheet {
   width: 210mm !important;
   height: 297mm !important;
   display: grid !important;
-  grid-template-columns: repeat(2, 105mm) !important;
-  grid-template-rows: repeat(6, 48mm) !important;
-  padding: 4.5mm 0mm !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-rows: repeat(6, 1fr) !important;
+  padding: 7mm 3.5mm !important;
   margin: 0 !important;
   background: white !important;
   box-sizing: border-box !important;
-  gap: 0mm !important;
+  gap: 1mm !important;
 }
 
 /* ─── Theme variables ─────────────────────────────── */
