@@ -236,7 +236,7 @@ export default function LabelPreview({
       </div>
 
       {/* ── Scaled preview ─────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: 16, overflow: 'hidden' }}>
+      <div className="print-root" style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: 16, overflow: 'hidden' }}>
         <div style={{
           width: A4_W * scale, height: A4_H * scale, flexShrink: 0, borderRadius: 4, overflow: 'hidden',
           boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
@@ -245,15 +245,15 @@ export default function LabelPreview({
             <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
           </div>
         </div>
-      </div>
 
-      {/* ── Hidden print copies (print-only) ───────────────────────────── */}
-      <div className="print-copies-container" style={{ display: 'none' }}>
-        {Array.from({ length: Math.max(0, copies - 1) }, (_, i) => (
-          <div key={i} className="print-sheet" style={{ pageBreakBefore: 'always' }}>
-            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
-          </div>
-        ))}
+        {/* ── Hidden print copies (print-only) ───────────────────────────── */}
+        <div className="print-copies-container" style={{ display: 'none' }}>
+          {Array.from({ length: Math.max(0, copies - 1) }, (_, i) => (
+            <div key={i} className="print-sheet" style={{ pageBreakBefore: 'always' }}>
+              <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
