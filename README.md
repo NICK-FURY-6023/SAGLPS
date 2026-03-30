@@ -1,9 +1,10 @@
 <div align="center">
 
-# 🏷️ Shree Ganpati Agency — Label Print System
+# 🏷️ Shree Ganpati Agency — Label Print System v3.0
 
-**Precision A4 label printing for product sticker sheets**
+**Precision A4 label printing with Jaquar product integration & vector PDF export**
 
+[![Version](https://img.shields.io/badge/Version-3.0.0-f97316?style=flat-square)](https://github.com/NICK-FURY-6023/printer-image-generator/releases)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -11,7 +12,7 @@
 [![Vercel](https://img.shields.io/badge/Deployed-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com/)
 [![License](https://img.shields.io/badge/License-Private-red)]()
 
-> Print **12 labels per A4 sheet** (105×48mm each, 2×6 grid) with live preview, cloud templates, CSV import, and PDF export. Built for Indian market workflows.
+> Print **12 labels per A4 sheet** (105×48mm each, 2×6 grid) with live preview, **instant Jaquar product search** (4,600+ products), **vector PDF export**, cloud templates, and CSV import. Built for Indian market workflows.
 
 </div>
 
@@ -23,9 +24,37 @@
 |:---:|:---:|
 | ![Landing](https://via.placeholder.com/600x340/0f172a/f97316?text=Landing+Page) | ![Dashboard](https://via.placeholder.com/600x340/0f172a/f97316?text=Dashboard) |
 
-| Login Screen | Print Output (A4) |
+| Jaquar Product Search | PDF Vector Export |
 |:---:|:---:|
-| ![Login](https://via.placeholder.com/600x340/0f172a/f97316?text=Login+Screen) | ![Print](https://via.placeholder.com/600x340/ffffff/111111?text=A4+Label+Sheet) |
+| ![Search](https://via.placeholder.com/600x340/0f172a/f97316?text=Jaquar+Search+%284600%2B+Products%29) | ![PDF](https://via.placeholder.com/600x340/ffffff/111111?text=Vector+PDF+%28100-500KB%29) |
+
+---
+
+## 🆕 What's New in v3.0.0
+
+### 🔍 Jaquar Product Integration
+- **4,600+ products** preloaded in a local JSON database — instant client-side search
+- Search by **product code** or **product name** with real-time dropdown
+- Auto-fills: code, name, description, and **exact MRP price** from jaquar.com
+- QR codes auto-generated from Jaquar product URLs
+
+### 📄 Vector PDF Engine (Native jsPDF)
+- **Completely rewritten** PDF generator — no more html2canvas screenshots
+- Text is **real vector text** — never cuts, always sharp, fully selectable & searchable
+- PDF file size: **100–500 KB** (was 30 MB with the old raster approach)
+- Transparent brand logos preserved with PNG alpha channel
+- Grid, borders, and text drawn directly via jsPDF native drawing API
+
+### 🖨️ Reliable Ctrl+P Printing
+- Uses **React Portal** (`createPortal`) to render print content directly under `<body>`
+- Eliminates blank-page issues caused by CSS `:not()` selector conflicts
+- Clean print CSS — only 15 lines
+
+### ⚡ Performance Improvements
+- **Code splitting** via `React.lazy` — Dashboard (81KB), Landing (186KB), Login (6KB) loaded on demand
+- **React.memo** on label cells — only re-renders cells that actually changed
+- Main bundle reduced from **500KB → 235KB** (53% smaller)
+- Jaquar search: 150ms debounce, module-level cache, sorted by prefix match
 
 ---
 
@@ -41,6 +70,12 @@ graph TB
         LS[Label Sheet]
         LV[Label Preview]
         TM[Template Manager]
+    end
+
+    subgraph Jaquar ["🔍 Jaquar Integration"]
+        JDB[(jaquar-products.json<br/>4,600+ products)]
+        JP[/api/jaquar-product]
+        JPR[/api/jaquar-price]
     end
 
     subgraph Auth ["🔐 Auth Layer"]
@@ -59,7 +94,6 @@ graph TB
 
     subgraph Storage ["💾 Supabase"]
         PG[(PostgreSQL)]
-        SB[Storage Bucket]
     end
 
     LP --> LG
@@ -67,6 +101,8 @@ graph TB
     AL --> |JWT| JWT
     JWT --> DB
     DB --> LE & LV
+    LE --> |instant search| JDB
+    LE --> |fetch details| JP
     LE --> LS
     LV --> LS
     DB --> TM
@@ -76,6 +112,7 @@ graph TB
     AV --> |verify| JWT
 
     style Frontend fill:#1e293b,color:#f1f5f9,stroke:#f97316
+    style Jaquar fill:#1e293b,color:#f1f5f9,stroke:#22c55e
     style Backend fill:#0f172a,color:#f1f5f9,stroke:#2563eb
     style Storage fill:#0f172a,color:#f1f5f9,stroke:#3FCF8E
     style Auth fill:#1e293b,color:#f1f5f9,stroke:#eab308
@@ -93,9 +130,14 @@ flowchart LR
     D -->|JWT Token| E[Dashboard]
     B -->|Yes| E
     E --> F[Edit 12 Labels]
+    F --> S{Search Jaquar?}
+    S -->|Yes| T[Instant Search<br/>4600+ products]
+    T --> U[Auto-fill Code,<br/>Name, Price, URL]
+    U --> F
+    S -->|No| F
     F --> G{Action}
-    G --> H[🖨️ Print A4]
-    G --> I[📄 Export PDF]
+    G --> H[🖨️ Print A4<br/>React Portal]
+    G --> I[📄 Vector PDF<br/>Native jsPDF]
     G --> J[💾 Save Template]
     G --> K[📂 Load Template]
     G --> L[📊 Import CSV]
@@ -105,6 +147,7 @@ flowchart LR
 
     style A fill:#f97316,color:white
     style E fill:#1e293b,color:#f1f5f9,stroke:#f97316
+    style T fill:#22c55e,color:white
     style N fill:#3FCF8E,color:white
 ```
 
@@ -152,76 +195,102 @@ graph TD
 
 **Each label contains:**
 ```
-┌─────────────────────────────────────────────┐
-│ [BRAND LOGO]  BRAND NAME        [QR CODE]   │
-│               #Product-Code                  │
-│─────────────────────────────────────────────│
-│            ✦ Product Name ✦                  │
-│─────────────────────────────────────────────│
-│  Size: 1 kg   │  Qty: 10 pcs  │  MRP: ₹120  │
-│─────────────────────────────────────────────│
-│  Manufacturer: Ganpati Foods Pvt. Ltd.       │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ ┌──────┐                                      ┌───────┐ │
+│ │BRAND │  Brand Name                          │  QR   │ │
+│ │ LOGO │  Product Code: ALD-CHR-079N          │ CODE  │ │
+│ └──────┘                                      └───────┘ │
+│  Product Name (max 2 lines, auto-wrapped)                │
+│  Description (max 2 lines, auto-wrapped)                 │
+│  MRP: Rs. 4,400.00                                       │
+└──────────────────────────────────────────────────────────┘
 ```
+
+**Label fields:**
+| Field | Description | Jaquar Auto-fill |
+|-------|-------------|:---:|
+| `manufacturer` | Brand name (e.g., "Jaquar") | — |
+| `logoUrl` | Brand logo URL (PNG for transparency) | — |
+| `code` | Product code (e.g., "ALD-CHR-079N") | ✅ |
+| `product` | Product name | ✅ |
+| `description` | Product description | ✅ (on-demand) |
+| `price` | MRP price in ₹ | ✅ |
 
 ---
 
 ## ✨ Features
 
-### Core Printing
-- 🏷️ **12 labels per A4 sheet** — 2×6 grid, each 105×48mm
-- 📐 **Pixel-perfect A4 layout** — 210×297mm with 4.5mm margins
-- 🖨️ **Native browser print** — `Ctrl+P` shortcut
-- 📄 **PDF export** — Client-side via html2canvas + jsPDF (4× resolution)
-- 🔢 **Multi-copy print** — 1–10 copies with page breaks
-- 🎛️ **Print calibration** — Top margin offset (±5mm) + font scale (80%–130%)
+### 🔍 Jaquar Product Search
+- **4,600+ products** instantly searchable — no API calls for search
+- Type in **product code** or **name** — results appear in real-time
+- Auto-fills code, name, price, and generates product URL for QR code
+- Description fetched on-demand from Jaquar's website via serverless proxy
+- Exact **MRP prices** scraped from jaquar.com (Indian pricing with tax)
+- Search results sorted: exact code prefix matches shown first
 
-### Label Features
-- 📊 **6 data fields** — Product, Code, Price, Size, Qty, Manufacturer
-- 🔲 **Auto QR codes** — Generated from product code/name
-- 🎨 **Brand logo badges** — Color-coded 9mm corner badges (8-color palette)
-- ✏️ **Smart blanks** — Empty fields render as `______` for manual fill
+### 🖨️ Printing & PDF
+- **12 labels per A4 sheet** — 2×6 grid, each 105×48mm
+- **Pixel-perfect layout** — 210×297mm with 7mm top/bottom, 3.5mm side margins
+- **Native browser print** — `Ctrl+P` via React Portal (no blank page issues)
+- **Vector PDF export** — Native jsPDF drawing API (not screenshots)
+  - Real text (selectable, searchable, never cuts or breaks)
+  - File size: 100–500 KB (vs 30 MB with old raster approach)
+  - Transparent PNG logos preserved
+  - Auto QR codes from product URLs
+- **Multi-copy print** — 1–10 copies with automatic page breaks
+- **Print calibration** — Top margin offset (±5mm) + font scale (60%–150%)
 
-### Data Management
-- 📥 **CSV import** — Upload or paste CSV text with preview
-- 📤 **JSON export/import** — Full backup & restore
-- ☁️ **Cloud templates** — Save/load/delete via Supabase
-- 📋 **Copy to all 12** — Duplicate single label across sheet
-- 💾 **Auto-save drafts** — Every 1.2s to localStorage
-- 📜 **Print history** — Last 30 operations with restore
+### 📊 Label Features
+- **6 data fields** — Manufacturer, Logo URL, Code, Product Name, Description, Price
+- **Auto QR codes** — Generated from product URL or code
+- **Brand logos** — External URL with transparent PNG support
+- **Smart text wrapping** — `splitTextToSize` in PDF, `-webkit-line-clamp` on screen
+- **Conditional rendering** — Empty fields hidden in preview (not shown as blanks)
 
-### UI/UX
-- 🌙 **Dark theme** — Slate-900 base with saffron accent (#f97316)
-- ✨ **Glassmorphism** — Frosted glass cards with blur effects
-- 🎭 **Smooth animations** — Framer Motion 3D tilt + anime.js timelines
-- 🔔 **Toast notifications** — react-hot-toast for all actions
-- 📱 **Responsive layout** — 42% editor / 58% preview split
+### 💾 Data Management
+- **CSV import** — Upload or paste CSV text with preview
+- **JSON export/import** — Full backup & restore
+- **Cloud templates** — Save/load/delete via Supabase (localStorage fallback)
+- **Copy to all 12** — Duplicate single label across entire sheet
+- **Bulk fill** — Apply fields to all labels at once
+- **Auto-save drafts** — Every 1.2s to localStorage
+- **Print history** — Last 30 operations with one-click restore
 
-### Security
-- 🔐 **JWT authentication** — 7-day token expiry
-- 🔑 **Bcrypt password hashing** — Salt rounds: 12
-- 🛡️ **Protected API routes** — All endpoints require Bearer token
-- 👤 **Single admin access** — Hardcoded admin-only system
+### 🎨 UI/UX
+- **Dark theme** — Slate-900 base with saffron gradient accent (#f97316 → #c2410c)
+- **Glassmorphism** — Frosted glass cards with backdrop blur
+- **Smooth animations** — Framer Motion 3D tilt on Landing, anime.js timelines
+- **Toast notifications** — react-hot-toast for all user actions
+- **42/58% split layout** — Editor left, Preview right
+- **Dot navigator** — 12 clickable dots showing filled status + product code tooltips
+- **Filled labels summary** — Quick overview of all filled labels with codes
+
+### 🔐 Security
+- **JWT authentication** — 7-day token expiry
+- **Bcrypt password hashing** — Salt rounds: 12
+- **Protected API routes** — All endpoints require Bearer token
+- **Single admin access** — Hardcoded admin-only system
+- **Logo URL sanitization** — Only http(s) or relative paths allowed
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| **UI Framework** | React | 18.2 |
-| **Build Tool** | Vite | 6.0 |
-| **Styling** | Tailwind CSS | 4.0 |
-| **Routing** | React Router | 7.13 |
-| **Animations** | Framer Motion + anime.js | 12.38 / 4.3 |
-| **HTTP Client** | Axios | 1.6 |
-| **QR Codes** | qrcode.react | 3.1 |
-| **PDF Generation** | jsPDF + html2canvas | 2.5 / 1.4 |
-| **Notifications** | react-hot-toast | 2.6 |
-| **Backend** | Vercel Serverless Functions | Node.js |
-| **Database Client** | Supabase JS Client | 2.x |
-| **Database** | Supabase (PostgreSQL) | — |
-| **Auth** | jsonwebtoken + bcryptjs | 9.0 / 2.4 |
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| **UI Framework** | React | 18.2 | Component-based UI |
+| **Build Tool** | Vite | 6.0 | Fast HMR + production builds |
+| **Styling** | Tailwind CSS | 4.0 | Utility-first CSS |
+| **Routing** | React Router | 7.13 | Client-side navigation |
+| **Animations** | Framer Motion + anime.js | 12.38 / 4.3 | Landing page animations |
+| **HTTP Client** | Axios | 1.6 | API calls with interceptors |
+| **PDF Generation** | jsPDF (native drawing) | 2.5 | Vector PDF export |
+| **QR Codes** | qrcode | 1.5 | QR code generation per label |
+| **Notifications** | react-hot-toast | 2.6 | Toast messages |
+| **Backend** | Vercel Serverless | Node.js | API + Jaquar proxy |
+| **Database** | Supabase (PostgreSQL) | 2.x | Cloud template storage |
+| **Auth** | jsonwebtoken + bcryptjs | 9.0 / 2.4 | JWT + password hashing |
+| **Product DB** | Static JSON | — | 4,600+ Jaquar products |
 
 ---
 
@@ -229,59 +298,73 @@ graph TD
 
 ```
 printer-image-generator/
-├── 📄 index.html              # HTML entry — meta, OG tags, PWA config
-├── 📄 package.json            # Dependencies & scripts
-├── 📄 vite.config.js          # React + Tailwind plugins
-├── 📄 vercel.json             # Headers, caching, SPA rewrites
-├── 📄 .env.example            # Environment variable template
+├── 📄 index.html                 # HTML entry — meta, OG tags
+├── 📄 package.json               # v3.0.0 — dependencies & scripts
+├── 📄 vite.config.js             # React + Tailwind plugins
+├── 📄 vercel.json                # Headers, caching, SPA rewrites
 │
-├── 📁 src/                    # Frontend source
-│   ├── main.jsx               # React root render
-│   ├── App.jsx                # Router + AuthProvider + Routes
-│   ├── index.css              # Tailwind + print CSS + animations
+├── 📁 src/                       # Frontend source
+│   ├── main.jsx                  # React root render
+│   ├── App.jsx                   # React.lazy routes + Suspense + AuthProvider
+│   ├── index.css                 # Tailwind + print CSS (portal-based)
 │   │
 │   ├── 📁 components/
-│   │   ├── Landing.jsx        # Public homepage (animated)
-│   │   ├── Login.jsx          # Auth form (email/password)
-│   │   ├── Dashboard.jsx      # Main app — editor + preview split
-│   │   ├── LabelEditor.jsx    # 12 label input cards + bulk fill
-│   │   ├── LabelSheet.jsx     # A4 grid renderer (QR + brand logos)
-│   │   ├── LabelPreview.jsx   # Print preview + toolbar + calibration
-│   │   └── TemplateManager.jsx# Save/load/delete cloud templates
+│   │   ├── Landing.jsx           # Animated public homepage
+│   │   ├── Login.jsx             # Auth form (email/password)
+│   │   ├── Dashboard.jsx         # Main app — 42% editor / 58% preview
+│   │   ├── LabelEditor.jsx       # 12 label cards + Jaquar instant search
+│   │   ├── LabelSheet.jsx        # A4 grid renderer (React.memo cells)
+│   │   ├── LabelPreview.jsx      # Print preview + vector PDF + calibration
+│   │   ├── TemplateManager.jsx   # Save/load/delete cloud templates
+│   │   ├── CSVImportModal.jsx    # Bulk CSV import with preview
+│   │   └── HistoryModal.jsx      # Last 30 operations + restore
 │   │
 │   ├── 📁 contexts/
-│   │   └── AuthContext.jsx    # JWT auth state (login/logout/verify)
+│   │   └── AuthContext.jsx       # JWT auth state (login/logout/verify)
 │   │
 │   └── 📁 services/
-│       └── api.js             # Axios client + auth interceptor
+│       └── api.js                # Axios client + Bearer token interceptor
 │
-├── 📁 api/                    # Vercel Serverless Functions
+├── 📁 api/                       # Vercel Serverless Functions
 │   ├── 📁 _lib/
-│   │   └── db.js              # Shared DB layer (Supabase JS client)
+│   │   └── db.js                 # Shared Supabase client
 │   ├── 📁 auth/
-│   │   ├── login.js           # POST — authenticate, return JWT
-│   │   └── verify.js          # GET — validate JWT token
-│   └── 📁 templates/
-│       ├── index.js           # GET (list) / POST (create)
-│       └── [id].js            # GET / PUT / DELETE by ID
+│   │   ├── login.js              # POST — authenticate, return JWT
+│   │   └── verify.js             # GET — validate JWT token
+│   ├── 📁 templates/
+│   │   ├── index.js              # GET (list) / POST (create)
+│   │   └── [id].js               # GET / PUT / DELETE by ID
+│   ├── jaquar-search.js          # GET — search Jaquar products
+│   ├── jaquar-product.js         # GET — fetch product details + description
+│   └── jaquar-price.js           # GET — fetch exact MRP from jaquar.com
 │
-├── 📁 public/                 # Static assets
-│   ├── favicon.svg            # Saffron gradient brand icon
-│   ├── og-image.png           # Social preview (1200×630)
-│   ├── og-image.svg           # Social preview source
-│   └── icons.svg              # Icon sprite
+├── 📁 public/                    # Static assets
+│   ├── favicon.svg               # Saffron gradient brand icon
+│   ├── og-image.png              # Social preview (1200×630)
+│   ├── jaquar-logo.png           # Default Jaquar brand logo
+│   └── jaquar-products.json      # Preloaded product DB (4,600+ items, ~1.2MB)
 │
 ├── 📁 scripts/
-│   ├── generate-hash.js       # CLI: bcrypt password hash generator
-│   ├── generate-og.js         # CLI: OG image generator
-│   └── setup-db.sql           # Supabase database setup SQL
+│   ├── build-jaquar-db.js        # Scrapes jaquar.com → builds product JSON
+│   ├── generate-hash.js          # CLI: bcrypt password hash generator
+│   ├── generate-og.js            # CLI: OG image generator
+│   └── setup-db.sql              # Supabase database setup SQL
 │
-└── 📁 dist/                   # Production build output
+└── 📁 dist/                      # Production build output (code-split)
+    ├── index.html
+    └── assets/
+        ├── index-*.js            # Core bundle (235KB)
+        ├── Dashboard-*.js        # Lazy: Dashboard (81KB)
+        ├── Landing-*.js          # Lazy: Landing page (186KB)
+        ├── Login-*.js            # Lazy: Login (6KB)
+        └── jspdf.es.min-*.js     # PDF library (358KB)
 ```
 
 ---
 
 ## 🔌 API Reference
+
+### Authentication
 
 ```mermaid
 sequenceDiagram
@@ -297,35 +380,58 @@ sequenceDiagram
     C->>A: GET /api/auth/verify [Bearer token]
     A->>A: jwt.verify()
     A-->>C: {valid: true, user: {role}}
+```
 
-    Note over C,D: Template CRUD
-    C->>A: GET /api/templates [Bearer token]
+### Template CRUD
+
+```mermaid
+sequenceDiagram
+    participant C as 🖥️ Client
+    participant A as ⚙️ API
+    participant D as 💾 Supabase
+
+    C->>A: GET /api/templates [Bearer]
     A->>D: SELECT * FROM templates
-    D-->>A: [{id, name, label_data, created_at}]
+    D-->>A: [{id, name, label_data}]
     A-->>C: templates[]
 
     C->>A: POST /api/templates {name, label_data}
     A->>D: INSERT INTO templates
-    D-->>A: new template
     A-->>C: 201 Created
-
-    C->>A: PUT /api/templates/:id {name, label_data}
-    A->>D: UPDATE templates SET ...
-    A-->>C: updated template
-
-    C->>A: DELETE /api/templates/:id
-    A->>D: DELETE FROM templates
-    A-->>C: 204 No Content
 ```
 
-| Method | Endpoint | Auth | Body | Response |
-|--------|----------|------|------|----------|
-| `POST` | `/api/auth/login` | ❌ | `{email, password}` | `{token, expiresIn}` |
-| `GET` | `/api/auth/verify` | ✅ Bearer | — | `{valid, user}` |
-| `GET` | `/api/templates` | ✅ Bearer | — | `[{id, name, label_data, created_at}]` |
-| `POST` | `/api/templates` | ✅ Bearer | `{name, label_data}` | `{id, name, ...}` |
-| `PUT` | `/api/templates/:id` | ✅ Bearer | `{name, label_data}` | `{id, name, ...}` |
-| `DELETE` | `/api/templates/:id` | ✅ Bearer | — | `204 No Content` |
+### Jaquar Product Search
+
+```mermaid
+sequenceDiagram
+    participant C as 🖥️ Client
+    participant J as 📦 jaquar-products.json
+    participant A as ⚙️ API
+    participant W as 🌐 jaquar.com
+
+    Note over C,J: Instant Search (Client-Side)
+    C->>J: Load on first mount (1.2MB)
+    J-->>C: 4,600+ products cached
+    C->>C: Local filter (150ms debounce)
+
+    Note over C,W: On-Demand Details
+    C->>A: GET /api/jaquar-product?url=...
+    A->>W: Fetch product page (Indian IP headers)
+    W-->>A: HTML with description + MRP
+    A-->>C: {name, description, price}
+```
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|:---:|-------------|
+| `POST` | `/api/auth/login` | ❌ | Authenticate with email + password |
+| `GET` | `/api/auth/verify` | ✅ | Validate JWT token |
+| `GET` | `/api/templates` | ✅ | List all saved templates |
+| `POST` | `/api/templates` | ✅ | Create new template |
+| `PUT` | `/api/templates/:id` | ✅ | Update template |
+| `DELETE` | `/api/templates/:id` | ✅ | Delete template |
+| `GET` | `/api/jaquar-search?q=...` | ❌ | Search Jaquar products |
+| `GET` | `/api/jaquar-product?url=...` | ❌ | Fetch product details from jaquar.com |
+| `GET` | `/api/jaquar-price?url=...` | ❌ | Fetch exact MRP from jaquar.com |
 
 ---
 
@@ -352,7 +458,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Edit `.env`:
 
 ```env
 # Auth
@@ -374,12 +480,9 @@ npm run generate-hash -- "YourSecurePassword123"
 
 ### 4. Setup Supabase Database
 
-Go to **Supabase Dashboard → SQL Editor** and run the SQL from `scripts/setup-db.sql`:
+Run the SQL from `scripts/setup-db.sql` in **Supabase Dashboard → SQL Editor**:
 
 ```sql
--- Creates templates table with proper permissions
--- Full SQL is in scripts/setup-db.sql
-
 CREATE TABLE IF NOT EXISTS templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -388,39 +491,33 @@ CREATE TABLE IF NOT EXISTS templates (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Grant access to Supabase roles
 GRANT ALL ON templates TO anon;
 GRANT ALL ON templates TO authenticated;
-
--- Disable RLS (auth handled at API layer)
 ALTER TABLE templates DISABLE ROW LEVEL SECURITY;
 ```
 
-> ⚠️ **Important:** Without this step, templates save/load will not work!
-
-### 5. Run Locally
+### 5. Build Jaquar Product Database (Optional)
 
 ```bash
-npm run dev          # Start Vite dev server → http://localhost:5173
+npm run build-db    # Scrapes jaquar.com → public/jaquar-products.json
 ```
 
-> **Note:** API routes require Vercel CLI for local testing:
-> ```bash
-> npx vercel dev      # Serves both frontend + API → http://localhost:3000
-> ```
+> A pre-built `jaquar-products.json` with 4,600+ products is already included.
 
-### 6. Deploy to Vercel
+### 6. Run Locally
+
+```bash
+npm run dev          # Vite dev server → http://localhost:5173
+npx vercel dev       # Full stack (frontend + API) → http://localhost:3000
+```
+
+### 7. Deploy to Vercel
 
 ```bash
 npx vercel --prod
 ```
 
-Set environment variables in **Vercel Dashboard → Settings → Environment Variables**:
-- `JWT_SECRET`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD_HASH`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+Set environment variables in **Vercel Dashboard → Settings → Environment Variables**.
 
 ---
 
@@ -431,7 +528,7 @@ Set environment variables in **Vercel Dashboard → Settings → Environment Var
 | **Email** | `shreeganpatiagency.printer@admin` |
 | **Password** | `@Shree_Ganpati@123` |
 
-> ⚠️ **Change these in production!** Update `ADMIN_EMAIL` and regenerate `ADMIN_PASSWORD_HASH` using `npm run generate-hash`.
+> ⚠️ **Change these in production!** Regenerate hash with `npm run generate-hash`.
 
 ---
 
@@ -439,8 +536,8 @@ Set environment variables in **Vercel Dashboard → Settings → Environment Var
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl + P` / `⌘ + P` | Print labels |
-| `Ctrl + S` / `⌘ + S` | Save template |
+| `Ctrl + P` / `⌘ + P` | Print labels (browser dialog) |
+| `Ctrl + S` / `⌘ + S` | Save current template |
 
 ---
 
@@ -451,18 +548,19 @@ erDiagram
     TEMPLATES {
         uuid id PK "gen_random_uuid()"
         text name "NOT NULL"
-        jsonb label_data "NOT NULL — array of 12 label objects"
+        jsonb label_data "Array of 12 label objects"
         timestamptz created_at "DEFAULT NOW()"
         timestamptz updated_at "DEFAULT NOW()"
     }
 
     LABEL_OBJECT {
+        string manufacturer "Brand name"
+        string logoUrl "Brand logo URL (PNG)"
+        string code "Product code"
         string product "Product name"
-        string code "SKU / product code"
+        string description "Product description"
         string price "MRP in ₹"
-        string size "Size / weight"
-        string qty "Quantity per pack"
-        string manufacturer "Brand / company name"
+        string productUrl "Jaquar product page URL"
     }
 
     TEMPLATES ||--o{ LABEL_OBJECT : "contains 12"
@@ -477,41 +575,43 @@ erDiagram
 | **Paper Size** | A4 (210mm × 297mm) |
 | **Grid Layout** | 2 columns × 6 rows |
 | **Labels per Sheet** | 12 |
-| **Label Size** | 105mm × 48mm |
-| **Top/Bottom Margin** | 4.5mm |
-| **Label Border** | 0.3mm solid |
+| **Label Size** | ~101mm × ~46mm (cell area) |
+| **Top/Bottom Padding** | 7mm |
+| **Left/Right Padding** | 3.5mm |
+| **Grid Gap** | 1mm |
+| **Logo Area** | 18mm wide (left side) |
+| **QR Code Area** | 13mm wide (right side) |
 | **Supported Printers** | Any A4 printer (inkjet/laser) |
 | **Recommended Stickers** | A4 sticker sheets (105×48mm pre-cut) |
-| **Print Scale** | Always 100% (no scaling) |
-| **PDF Resolution** | 4× canvas scale (3176×4492px) |
+| **Print Scale** | Always 100% (no browser scaling) |
+| **PDF Type** | Vector (native jsPDF drawing) |
+| **PDF Size** | 100–500 KB per page |
 
 ---
 
 ## 🔧 Scripts
 
 ```bash
-npm run dev            # Start development server
-npm run build          # Production build → /dist
+npm run dev            # Start Vite dev server
+npm run build          # Production build → /dist (code-split)
 npm run preview        # Preview production build locally
 npm run generate-hash  # Generate bcrypt password hash
+npm run build-db       # Rebuild Jaquar product database from jaquar.com
 ```
 
 ---
 
 ## 📋 CSV Import Format
 
-Create a CSV file with these columns:
-
 ```csv
-product,code,price,size,qty,manufacturer
-Basmati Rice Premium,GR-001,120,1 kg,10 pcs,Ganpati Foods Pvt. Ltd.
-Toor Dal Best Quality,TD-002,85,500 g,20 pcs,Ganpati Agency
-Jaquar Diverter D-450,JD-006,3800,3/4 inch,1 pc,Jaquar & Co. Pvt. Ltd.
+manufacturer,logoUrl,code,product,description,price
+Jaquar,,ALD-CHR-079N,Single Lever Diverter,Concealed body for high flow diverter,4400
+Hindware,,F360002CP,Contessa Pillar Cock,Chrome pillar cock with aerator,1250
 ```
 
 - Maximum **12 rows** (extra rows ignored)
-- Missing rows auto-filled with blank labels
-- Download sample CSV from the import modal
+- `logoUrl` is optional — leave blank for text-only brand display
+- All fields are optional — empty labels render as blank
 
 ---
 
@@ -519,10 +619,26 @@ Jaquar Diverter D-450,JD-006,3800,3/4 inch,1 pc,Jaquar & Co. Pvt. Ltd.
 
 - `.env` file is in `.gitignore` — **never commit credentials**
 - JWT tokens expire after **7 days**
-- All API routes validate Bearer token
+- All template API routes validate Bearer token
+- Jaquar search/product APIs are public (read-only)
 - Passwords stored as **bcrypt hashes** (salt rounds: 12)
-- CORS enabled with `Access-Control-Allow-Origin: *`
+- Logo URLs sanitized — only `http(s)` or relative paths allowed
 - Single admin account — no multi-user support
+
+---
+
+## 📊 Performance
+
+| Metric | Value |
+|--------|-------|
+| **Main bundle** | 235 KB (code-split from 500 KB) |
+| **Dashboard chunk** | 81 KB (lazy loaded) |
+| **Landing chunk** | 186 KB (lazy loaded) |
+| **Login chunk** | 6 KB (lazy loaded) |
+| **Jaquar DB** | 1.2 MB (loaded once, cached in memory) |
+| **Search latency** | < 5ms (client-side, 150ms debounce) |
+| **PDF generation** | ~1-3s for 12 labels |
+| **QR code cache** | LRU, max 50 entries |
 
 ---
 
@@ -546,6 +662,6 @@ Private — All rights reserved by **Shree Ganpati Agency**.
 
 **Built with ❤️ for Shree Ganpati Agency**
 
-*Precision labels. Every time.*
+*Precision labels. Instant Jaquar search. Vector PDF. Every time.*
 
 </div>

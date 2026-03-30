@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Landing from './components/Landing';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import { lazy, Suspense } from 'react';
+
+const Landing = lazy(() => import('./components/Landing'));
+const Login = lazy(() => import('./components/Login'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -34,6 +36,13 @@ function ProtectedApp() {
   return user ? <Dashboard /> : <Login />;
 }
 
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f172a' }}>
+    <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #f97316', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -46,11 +55,13 @@ export default function App() {
             error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
-        <Routes>
-          <Route path="/"    element={<Landing />} />
-          <Route path="/app" element={<ProtectedApp />} />
-          <Route path="*"    element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"    element={<Landing />} />
+            <Route path="/app" element={<ProtectedApp />} />
+            <Route path="*"    element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   );

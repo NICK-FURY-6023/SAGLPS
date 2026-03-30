@@ -8,7 +8,7 @@
  * └────────┴─────────────────────────────────────┴──────┘
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import QRCode from 'qrcode';
 
 // Generate QR code data URL (LRU cache — max 50 entries)
@@ -30,7 +30,7 @@ function useQRCode(url) {
   return dataUrl;
 }
 
-function LabelCell({ label, fontScale = 1 }) {
+const LabelCell = memo(function LabelCell({ label, fontScale = 1 }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
@@ -145,7 +145,7 @@ function LabelCell({ label, fontScale = 1 }) {
 
     </div>
   );
-}
+});
 
 export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1 }) {
   const safeLabels = Array.from({ length: 12 }, (_, i) => labels[i] || {});
