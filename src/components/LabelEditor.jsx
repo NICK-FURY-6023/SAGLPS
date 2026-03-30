@@ -309,6 +309,12 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
                       if (searchable) handleSearchableChange(key, e.target.value);
                       else { onChange(key, e.target.value); if (key === 'price') setPriceHint(''); }
                     }}
+                    onBlur={e => {
+                      if (key === 'price' && e.target.value.trim()) {
+                        const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+                        if (cleaned !== e.target.value) onChange(key, cleaned);
+                      }
+                    }}
                     onFocus={() => { if (searchable) { setSearchField(key); if (searchResults.length > 0) setShowDropdown(true); } }}
                     placeholder={placeholder}
                     className="input-dark"

@@ -74,10 +74,10 @@ function LabelCell({ label, fontScale = 1 }) {
       <div style={{
         flex: '1 1 auto', display: 'flex', flexDirection: 'column',
         justifyContent: 'center', padding: '1.5mm 2.5mm',
-        overflow: 'hidden', minWidth: 0, gap: '0.8mm',
+        overflow: 'hidden', minWidth: 0, gap: '1.2mm',
       }}>
         {code && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6.5), lineHeight: 1.25, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6.5), lineHeight: 1.3, overflow: 'hidden', maxHeight: `${1.3 * 6.5 * fontScale}pt`, flexShrink: 0 }}>
             <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm' }}>Product Code</span>
             <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm' }}>:</span>
             <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</span>
@@ -85,14 +85,13 @@ function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {product && (
-          <div style={{ display: 'flex', fontSize: s(6), lineHeight: 1.25, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm', fontSize: s(6.5) }}>Product Name</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm', fontSize: s(6.5) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(6), lineHeight: 1.3, overflow: 'hidden', maxHeight: `${2 * 1.3 * 6.5 * fontScale}pt`, flexShrink: 0 }}>
+            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm', fontSize: s(6.5), lineHeight: 1.3 }}>Product Name</span>
+            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm', fontSize: s(6.5), lineHeight: 1.3 }}>:</span>
             <span style={{
               fontWeight: 600, textTransform: 'uppercase', wordBreak: 'break-word',
-              overflow: 'hidden', display: '-webkit-box',
-              WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              textOverflow: 'ellipsis',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              maxHeight: `${2 * 1.3 * 6 * fontScale}pt`,
             }}>
               {product}
             </span>
@@ -100,14 +99,13 @@ function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {description && (
-          <div style={{ display: 'flex', fontSize: s(5.5), lineHeight: 1.2, flexShrink: 0 }}>
-            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm', fontSize: s(6.5) }}>Product Desc</span>
-            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm', fontSize: s(6.5) }}>:</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', fontSize: s(5.5), lineHeight: 1.3, overflow: 'hidden', maxHeight: `${2 * 1.3 * 6.5 * fontScale}pt`, flexShrink: 0 }}>
+            <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm', fontSize: s(6.5), lineHeight: 1.3 }}>Product Desc</span>
+            <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm', fontSize: s(6.5), lineHeight: 1.3 }}>:</span>
             <span style={{
               fontWeight: 500, wordBreak: 'break-word',
-              overflow: 'hidden', display: '-webkit-box',
-              WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              textOverflow: 'ellipsis',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              maxHeight: `${2 * 1.3 * 5.5 * fontScale}pt`,
             }}>
               {description}
             </span>
@@ -115,7 +113,7 @@ function LabelCell({ label, fontScale = 1 }) {
         )}
 
         {price && (
-          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6.5), lineHeight: 1.25, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', fontSize: s(6.5), lineHeight: 1.3, overflow: 'hidden', maxHeight: `${1.3 * 8 * fontScale}pt`, flexShrink: 0 }}>
             <span style={{ fontWeight: 800, flexShrink: 0, minWidth: '18mm' }}>Product Price</span>
             <span style={{ fontWeight: 800, flexShrink: 0, margin: '0 1mm' }}>:</span>
             <span style={{ fontWeight: 900, fontSize: s(8) }}>

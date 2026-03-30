@@ -94,7 +94,7 @@ function CSVImportModal({ onImport, onClose }) {
       header.forEach((h, i) => { if (CSV_COLUMNS.includes(h)) obj[h] = vals[i] || ''; });
       return { ...emptyLabel(), ...obj };
     });
-    return { rows: rows.slice(0, 12) };
+    return { rows: rows.slice(0, 12), totalRows: rows.length };
   };
 
   const handleText = (val) => {
@@ -103,7 +103,10 @@ function CSVImportModal({ onImport, onClose }) {
     if (!val.trim()) { setPreview([]); return; }
     const result = parseCSV(val);
     if (result.error) { setError(result.error); setPreview([]); }
-    else setPreview(result.rows);
+    else {
+      setPreview(result.rows);
+      if (result.totalRows > 12) setError(`Note: Only first 12 of ${result.totalRows} labels imported.`);
+    }
   };
 
   const handleFile = (e) => {
@@ -120,8 +123,10 @@ function CSVImportModal({ onImport, onClose }) {
 
   const downloadSample = () => {
     const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
     a.download = 'ganpati-labels-sample.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 200);
   };
 
   const handleImport = () => {
@@ -312,7 +317,10 @@ export default function Dashboard() {
   useEffect(() => {
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(labels)); } catch { /* quota exceeded */ }
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(labels)); }
+      catch (err) {
+        if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
+      }
       setAutoSaved(true);
       clearTimeout(autoFadeTimer.current);
       autoFadeTimer.current = setTimeout(() => setAutoSaved(false), 2000);
@@ -342,6 +350,7 @@ export default function Dashboard() {
 
   const handlePrint = () => {
     const filledCount = labels.filter(l => l.product?.trim()).length;
+    if (!filledCount) { toast.error('No labels filled — nothing to print!'); return; }
     logHistory('print', currentTemplateName || 'Untitled', filledCount, labels, copies);
     window.print();
   };
@@ -375,9 +384,27 @@ export default function Dashboard() {
   const handleJSONExport = () => {
     const data = { labels, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
     a.download = `ganpati-labels-${Date.now()}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 200);
     toast.success('JSON exported');
+  };
+
+  const handleCSVExport = () => {
+    const header = 'product,code,description,price,logo,productUrl';
+    const rows = labels.map(l =>
+      [l.product, l.code, l.description, l.price, l.logo, l.productUrl]
+        .map(v => `"${(v || '').replace(/"/g, '""')}"`)
+        .join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `ganpati-labels-${Date.now()}.csv`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 200);
+    toast.success('CSV exported');
   };
 
   const jsonInputRef = useRef(null);
@@ -451,7 +478,11 @@ export default function Dashboard() {
             </Btn>
             <Btn onClick={handleJSONExport} variant="ghost">
               <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
-              Export
+              JSON
+            </Btn>
+            <Btn onClick={handleCSVExport} variant="ghost">
+              <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
+              CSV
             </Btn>
             <Btn onClick={handleJSONImport} variant="ghost">
               <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12" />

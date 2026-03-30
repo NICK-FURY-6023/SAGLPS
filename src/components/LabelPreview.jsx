@@ -88,8 +88,14 @@ export default function LabelPreview({
       offscreen.appendChild(clone);
       document.body.appendChild(offscreen);
 
-      // Wait a tick for images inside the clone to start loading
-      await new Promise(r => setTimeout(r, 600));
+      // Wait for all images inside the clone to finish loading
+      const images = clone.querySelectorAll('img');
+      await Promise.all(Array.from(images).map(img =>
+        new Promise(resolve => {
+          if (img.complete) resolve();
+          else { img.onload = img.onerror = resolve; }
+        })
+      ));
 
       const canvas = await html2canvas(clone, {
         scale: 4, useCORS: true, allowTaint: false,
@@ -190,7 +196,7 @@ export default function LabelPreview({
 
           {/* Top margin */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Top margin offset</label>
+            <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Top margin offset <span style={{ fontSize: 9, color: '#475569' }}>(− up, + down)</span></label>
             <input type="range" min="-5" max="5" step="0.5"
               value={printMargin} onChange={e => setPrintMargin(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#f97316' }} />
@@ -203,7 +209,7 @@ export default function LabelPreview({
           {/* Font scale */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Font size scale</label>
-            <input type="range" min="0.8" max="1.3" step="0.05"
+            <input type="range" min="0.6" max="1.5" step="0.05"
               value={fontScale} onChange={e => onFontScaleChange && onFontScaleChange(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#7c3aed' }} />
             <span style={{ fontSize: 12, color: '#7c3aed', minWidth: 44, textAlign: 'right' }}>
