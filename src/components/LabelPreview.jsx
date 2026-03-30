@@ -289,6 +289,50 @@ export default function LabelPreview({
           PDF
         </ToolBtn>
 
+        {/* PNG Export */}
+        <ToolBtn onClick={async () => {
+          const tid = toast.loading('Generating PNG…');
+          try {
+            const { default: html2canvas } = await import('html2canvas');
+            const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
+            if (!sheet) throw new Error('Preview not found');
+            const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const link = document.createElement('a');
+            link.download = `ganpati-labels-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            toast.success('PNG downloaded!', { id: tid });
+          } catch (err) { toast.error(`PNG failed: ${err?.message || 'Error'}`, { id: tid }); }
+        }} variant="ghost">
+          <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
+          PNG
+        </ToolBtn>
+
+        {/* SVG Export */}
+        <ToolBtn onClick={async () => {
+          const tid = toast.loading('Generating SVG…');
+          try {
+            const { default: html2canvas } = await import('html2canvas');
+            const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
+            if (!sheet) throw new Error('Preview not found');
+            const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const dataUrl = canvas.toDataURL('image/png');
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+              <image href="${dataUrl}" width="${canvas.width}" height="${canvas.height}"/>
+            </svg>`;
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            const link = document.createElement('a');
+            link.download = `ganpati-labels-${Date.now()}.svg`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 200);
+            toast.success('SVG downloaded!', { id: tid });
+          } catch (err) { toast.error(`SVG failed: ${err?.message || 'Error'}`, { id: tid }); }
+        }} variant="ghost">
+          <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
+          SVG
+        </ToolBtn>
+
         {/* Save / Load */}
         <ToolBtn onClick={onSave} variant="ghost">
           <Icon d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
 import LabelEditor from './LabelEditor';
 import LabelPreview from './LabelPreview';
@@ -349,10 +350,147 @@ function logHistory(action, templateName, filledCount, pages, copies = 1) {
   } catch { /* ignore */ }
 }
 
+/* ── Keyboard Shortcuts Modal ──────────────────────────────────────── */
+function ShortcutsModal({ onClose }) {
+  const shortcuts = [
+    { keys: 'Ctrl + P', desc: 'Print labels' },
+    { keys: 'Ctrl + S', desc: 'Save template' },
+    { keys: 'Ctrl + Z', desc: 'Undo last change' },
+    { keys: 'Ctrl + Shift + Z', desc: 'Redo last undo' },
+    { keys: '?', desc: 'Toggle keyboard shortcuts' },
+    { keys: '1–9', desc: 'Jump to label 1–9 (when not in input)' },
+    { keys: 'Ctrl + ←/→', desc: 'Switch pages' },
+  ];
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, width: '100%', maxWidth: 420, padding: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>⌨️ Keyboard Shortcuts</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>×</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {shortcuts.map((s, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < shortcuts.length - 1 ? '1px solid #0f172a' : 'none' }}>
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>{s.desc}</span>
+              <kbd style={{
+                background: '#0f172a', border: '1px solid #334155', borderRadius: 6, padding: '3px 10px',
+                fontSize: 12, fontWeight: 600, color: '#f97316', fontFamily: 'monospace', whiteSpace: 'nowrap',
+              }}>{s.keys}</kbd>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: '#475569', marginTop: 16, marginBottom: 0 }}>
+          Press <kbd style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#f97316' }}>?</kbd> anywhere to toggle this panel
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Label Templates Gallery ──────────────────────────────────────── */
+const PRESET_TEMPLATES = [
+  {
+    name: 'Jaquar Bathroom Fittings',
+    labels: [
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'ALD-CHR-079N', product: 'Alive Single Lever Basin Mixer', description: 'Chrome plated single lever basin mixer with hot & cold', price: '4450.00' },
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'FLR-CHR-005B', product: 'Florentine Single Lever Basin Mixer', description: 'Basin mixer with 450mm braided hoses', price: '2870.00' },
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'OPL-CHR-015N', product: 'Opal Prime Wall Mixer', description: 'Wall mixer with provision for overhead shower', price: '3120.00' },
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'LYR-CHR-038N', product: 'Lyric Pillar Cock', description: 'Chrome plated pillar cock for wash basin', price: '1580.00' },
+    ],
+  },
+  {
+    name: 'Mixed Brands Premium',
+    labels: [
+      { manufacturer: 'Kohler', logoUrl: '', code: 'KOH-CHR-450', product: 'High Flow Diverter', description: 'High flow concealed diverter with trim', price: '5600.00' },
+      { manufacturer: 'Grohe', logoUrl: '', code: 'GRH-CHR-820', product: 'Kitchen Sink Mixer', description: 'Single lever kitchen sink mixer with pull-out spray', price: '3200.00' },
+      { manufacturer: 'Hindware', logoUrl: '', code: 'HND-CHR-210', product: 'Overhead Shower 200mm', description: 'Round overhead shower with rain spray', price: '4500.00' },
+      { manufacturer: 'Cera', logoUrl: '', code: 'CRA-CHR-112', product: 'Angular Stop Cock', description: 'Brass angular stop cock with ceramic cartridge', price: '980.00' },
+    ],
+  },
+  {
+    name: 'Jaquar Health Faucets',
+    labels: [
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'ALD-CHR-589', product: 'Alive Health Faucet', description: 'Health faucet with 1m PVC hose and hook', price: '990.00' },
+      { manufacturer: 'Jaquar', logoUrl: '/jaquar-logo.png', code: 'CON-CHR-589', product: 'Continental Health Faucet', description: 'Health faucet set with wall hook', price: '750.00' },
+    ],
+  },
+  {
+    name: 'Empty 12 Labels',
+    labels: [],
+  },
+];
+
+function TemplatesGallery({ onApply, onClose }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', overflow: 'auto', padding: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>📋 Label Templates</h2>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>Quick-start with pre-filled label data</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>×</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {PRESET_TEMPLATES.map((t, i) => (
+            <div key={i} style={{
+              background: '#0f172a', border: '1px solid #334155', borderRadius: 12, padding: 16, cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = '#f97316'; }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = '#334155'; }}
+              onClick={() => { onApply(t); onClose(); }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>{t.name}</span>
+                <span style={{ fontSize: 11, color: '#64748b', background: '#1e293b', padding: '2px 8px', borderRadius: 10 }}>
+                  {t.labels.length || 0} labels
+                </span>
+              </div>
+              {t.labels.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {t.labels.slice(0, 4).map((l, j) => (
+                    <span key={j} style={{ fontSize: 10, color: '#94a3b8', background: '#1e293b', padding: '2px 8px', borderRadius: 6, fontFamily: 'monospace' }}>
+                      {l.code}
+                    </span>
+                  ))}
+                  {t.labels.length > 4 && <span style={{ fontSize: 10, color: '#475569' }}>+{t.labels.length - 4} more</span>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Dashboard ────────────────────────────────────────────────────── */
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
+
+  // ── Mobile responsive ──
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [mobileTab, setMobileTab] = useState('editor');
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // ── Multi-page state ──
   const [pages, setPages] = useState(() => {
@@ -379,6 +517,7 @@ export default function Dashboard() {
   // Current page's labels (derived)
   const labels = pages[currentPage] || initialLabels();
   const setLabels = (newLabelsOrFn) => {
+    pushUndo(pages);
     setPages(prev => {
       const updated = [...prev];
       const page = Math.min(currentPage, prev.length - 1);
@@ -415,42 +554,109 @@ export default function Dashboard() {
   const [autoSaved, setAutoSaved] = useState(false);
   const [showCSVImport, setShowCSVImport] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showTemplatesGallery, setShowTemplatesGallery] = useState(false);
   const [copies, setCopies] = useState(1);
   const [fontScale, setFontScale] = useState(1);
   const autoSaveTimer = useRef(null);
 
-  // Auto-save draft (all pages)
+  // ── Undo / Redo ──
+  const undoStack = useRef([]);
+  const redoStack = useRef([]);
+  const skipHistory = useRef(false);
+
+  const pushUndo = useCallback((prevPages) => {
+    if (skipHistory.current) return;
+    undoStack.current = [...undoStack.current.slice(-29), JSON.stringify(prevPages)];
+    redoStack.current = [];
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (!undoStack.current.length) { toast('Nothing to undo', { icon: '↩️' }); return; }
+    const prev = undoStack.current.pop();
+    redoStack.current.push(JSON.stringify(pages));
+    skipHistory.current = true;
+    setPages(JSON.parse(prev));
+    skipHistory.current = false;
+    toast('Undo', { icon: '↩️', duration: 1000 });
+  }, [pages]);
+
+  const handleRedo = useCallback(() => {
+    if (!redoStack.current.length) { toast('Nothing to redo', { icon: '↪️' }); return; }
+    const next = redoStack.current.pop();
+    undoStack.current.push(JSON.stringify(pages));
+    skipHistory.current = true;
+    setPages(JSON.parse(next));
+    skipHistory.current = false;
+    toast('Redo', { icon: '↪️', duration: 1000 });
+  }, [pages]);
+
+  // Auto-save draft (debounced on change + periodic every 30s)
   const autoFadeTimer = useRef(null);
+  const periodicSaveTimer = useRef(null);
+  const saveDraft = useCallback(() => {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); }
+    catch (err) {
+      if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
+    }
+    setAutoSaved(true);
+    clearTimeout(autoFadeTimer.current);
+    autoFadeTimer.current = setTimeout(() => setAutoSaved(false), 2000);
+  }, [pages]);
+
   useEffect(() => {
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); }
-      catch (err) {
-        if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
-      }
-      setAutoSaved(true);
-      clearTimeout(autoFadeTimer.current);
-      autoFadeTimer.current = setTimeout(() => setAutoSaved(false), 2000);
-    }, 1200);
+    autoSaveTimer.current = setTimeout(saveDraft, 1200);
     return () => {
       clearTimeout(autoSaveTimer.current);
       clearTimeout(autoFadeTimer.current);
     };
+  }, [pages, saveDraft]);
+
+  // Periodic auto-save every 30s
+  useEffect(() => {
+    periodicSaveTimer.current = setInterval(() => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); } catch {}
+    }, 30000);
+    return () => clearInterval(periodicSaveTimer.current);
   }, [pages]);
 
   // Keyboard shortcuts
+  const stateRef = useRef({ pages, copies, currentTemplateName, currentPage });
+  useEffect(() => { stateRef.current = { pages, copies, currentTemplateName, currentPage }; });
   useEffect(() => {
     const handler = (e) => {
+      const s = stateRef.current;
+      const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault(); handlePrint();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault(); openSave();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault(); handleUndo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') {
+        e.preventDefault(); handleRedo();
+      }
+      // ? key for shortcuts modal
+      if (e.key === '?' && !inInput) {
+        setShowShortcuts(o => !o);
+      }
+      // Ctrl+Left/Right for page nav
+      if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft' && !inInput) {
+        e.preventDefault();
+        setCurrentPage(p => Math.max(0, p - 1));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight' && !inInput) {
+        e.preventDefault();
+        setCurrentPage(p => Math.min(s.pages.length - 1, p + 1));
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [pages, copies, currentTemplateName]);
+  }, [handleUndo, handleRedo]);
 
   const openSave = () => { setTemplateManagerMode('save'); setShowTemplateManager(true); };
   const openLoad = () => { setTemplateManagerMode('load'); setShowTemplateManager(true); };
@@ -498,6 +704,17 @@ export default function Dashboard() {
     setCurrentTemplateName('');
     setShowCSVImport(false);
     toast.success(`Imported ${newLabels.filter(l => l.product?.trim()).length} labels to page ${currentPage + 1}`);
+  };
+
+  const handleTemplateApply = (template) => {
+    pushUndo(pages);
+    const newLabels = Array.from({ length: 12 }, (_, i) => ({
+      ...emptyLabel(),
+      ...(template.labels[i] || {}),
+    }));
+    setLabels(newLabels);
+    setCurrentTemplateName(template.name);
+    toast.success(`Applied "${template.name}"`);
   };
 
   const handleJSONExport = () => {
@@ -631,11 +848,30 @@ export default function Dashboard() {
               <Icon d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
               History
             </Btn>
+            <Btn onClick={() => setShowTemplatesGallery(true)} variant="ghost">
+              <Icon d="M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5zM4 13a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6zM16 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-6z" />
+              Templates
+            </Btn>
+            <Btn onClick={handleUndo} variant="ghost" style={{ padding: '7px 8px' }} title="Undo (Ctrl+Z)">
+              <Icon d="M3 10h10a5 5 0 0 1 0 10H9M3 10l4-4M3 10l4 4" />
+            </Btn>
+            <Btn onClick={handleRedo} variant="ghost" style={{ padding: '7px 8px' }} title="Redo (Ctrl+Shift+Z)">
+              <Icon d="M21 10H11a5 5 0 0 0 0 10h4M21 10l-4-4M21 10l-4 4" />
+            </Btn>
             <Btn onClick={handleReset} variant="danger">
               <Icon d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               Reset
             </Btn>
             <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)' }} />
+            <Btn onClick={toggleTheme} variant="ghost" style={{ padding: '7px 8px' }} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+              {theme === 'dark'
+                ? <Icon d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
+                : <Icon d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              }
+            </Btn>
+            <Btn onClick={() => setShowShortcuts(true)} variant="ghost" style={{ padding: '7px 8px' }} title="Keyboard shortcuts (?)">
+              <Icon d="M15.2 3H8.8C5.96 3 5 3.96 5 6.8v10.4C5 20.04 5.96 21 8.8 21h6.4c2.84 0 3.8-.96 3.8-3.8V6.8C19 3.96 18.04 3 15.2 3zM11 7.5h2M8 11h8M8 14.5h8" />
+            </Btn>
             <Btn onClick={() => { logout(); toast('Logged out'); navigate('/', { replace: true }); }} variant="ghost" style={{ padding: '7px 10px' }}>
               <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
               Logout
@@ -733,12 +969,38 @@ export default function Dashboard() {
         </span>
       </div>
 
+      {/* ─── Mobile Tab Bar ─── */}
+      {isMobile && (
+        <div style={{
+          display: 'flex', flexShrink: 0, borderBottom: '1px solid #334155', background: '#1e293b',
+        }}>
+          {['editor', 'preview'].map(tab => (
+            <button key={tab} onClick={() => setMobileTab(tab)} style={{
+              flex: 1, padding: '10px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: 'none', borderBottom: mobileTab === tab ? '2px solid #f97316' : '2px solid transparent',
+              background: mobileTab === tab ? 'rgba(249,115,22,0.08)' : 'transparent',
+              color: mobileTab === tab ? '#f97316' : '#64748b',
+              transition: 'all 0.15s', textTransform: 'uppercase', letterSpacing: '0.05em',
+            }}>
+              {tab === 'editor' ? '✏️ Editor' : '👁️ Preview'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ─── Main split ─── */}
-      <div className="panel-3d" style={{ display: 'flex', flex: 1, overflow: 'hidden', maxWidth: 1600, width: '100%', margin: '0 auto' }}>
-        <div style={{ width: '42%', overflowY: 'auto', flexShrink: 0, borderRight: '1px solid #1e293b', background: 'linear-gradient(180deg, #0f172a, #0c1322)' }}>
+      <div className="panel-3d" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, overflow: 'hidden', maxWidth: 1600, width: '100%', margin: '0 auto' }}>
+        <div style={{
+          width: isMobile ? '100%' : '42%', overflowY: 'auto', flexShrink: 0,
+          borderRight: isMobile ? 'none' : '1px solid #1e293b', background: 'linear-gradient(180deg, #0f172a, #0c1322)',
+          display: isMobile && mobileTab !== 'editor' ? 'none' : 'block',
+        }}>
           <LabelEditor labels={labels} setLabels={setLabels} />
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', background: 'linear-gradient(180deg, #111827, #0d1421)' }}>
+        <div style={{
+          flex: 1, overflowY: 'auto', background: 'linear-gradient(180deg, #111827, #0d1421)',
+          display: isMobile && mobileTab !== 'preview' ? 'none' : 'block',
+        }}>
           <LabelPreview
             labels={labels}
             pages={pages}
@@ -766,6 +1028,8 @@ export default function Dashboard() {
         setCurrentTemplateName(n || '');
         toast.success(`Restored ${loadedPages.length} page${loadedPages.length > 1 ? 's' : ''} from history`);
       }} />}
+      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showTemplatesGallery && <TemplatesGallery onApply={handleTemplateApply} onClose={() => setShowTemplatesGallery(false)} />}
     </div>
   );
 }

@@ -397,11 +397,31 @@ export default function LabelEditor({ labels, setLabels }) {
   const [activeIndex, setActiveIndex]       = useState(0);
   const [applyAll, setApplyAll]             = useState(emptyLabel());
   const [applyPanelOpen, setApplyPanelOpen] = useState(false);
+  const [dragIdx, setDragIdx]               = useState(null);
+  const [dragOverIdx, setDragOverIdx]       = useState(null);
 
   const updateLabel    = (index, key, value) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, [key]: value } : l));
   const updateLabelMulti = (index, fields) => setLabels(prev => prev.map((l, i) => i === index ? { ...l, ...fields } : l));
   const resetLabel     = (index)             => setLabels(prev => prev.map((l, i) => i === index ? emptyLabel() : l));
   const duplicateToAll = (src)               => setLabels(prev => prev.map(() => ({ ...src })));
+
+  // Drag & Drop handlers
+  const handleDragStart = (idx) => { setDragIdx(idx); };
+  const handleDragOver = (e, idx) => { e.preventDefault(); setDragOverIdx(idx); };
+  const handleDrop = (idx) => {
+    if (dragIdx !== null && dragIdx !== idx) {
+      setLabels(prev => {
+        const updated = [...prev];
+        const [dragged] = updated.splice(dragIdx, 1);
+        updated.splice(idx, 0, dragged);
+        return updated;
+      });
+      setActiveIndex(idx);
+    }
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setDragOverIdx(null); };
 
   const handleApplyAll = () => {
     setLabels(prev => prev.map(l => {
@@ -579,17 +599,30 @@ export default function LabelEditor({ labels, setLabels }) {
       {/* Label Cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {labels.map((label, i) => (
-          <LabelCard
+          <div
             key={i}
-            index={i}
-            label={label}
-            isActive={activeIndex === i}
-            onActivate={setActiveIndex}
-            onChange={(key, value) => updateLabel(i, key, value)}
-            onFillMulti={(fields) => updateLabelMulti(i, fields)}
-            onDuplicateToAll={duplicateToAll}
-            onReset={resetLabel}
-          />
+            draggable
+            onDragStart={() => handleDragStart(i)}
+            onDragOver={(e) => handleDragOver(e, i)}
+            onDrop={() => handleDrop(i)}
+            onDragEnd={handleDragEnd}
+            style={{
+              opacity: dragIdx === i ? 0.4 : 1,
+              borderTop: dragOverIdx === i && dragIdx !== null && dragIdx !== i ? '2px solid #f97316' : '2px solid transparent',
+              transition: 'opacity 0.15s',
+            }}
+          >
+            <LabelCard
+              index={i}
+              label={label}
+              isActive={activeIndex === i}
+              onActivate={setActiveIndex}
+              onChange={(key, value) => updateLabel(i, key, value)}
+              onFillMulti={(fields) => updateLabelMulti(i, fields)}
+              onDuplicateToAll={duplicateToAll}
+              onReset={resetLabel}
+            />
+          </div>
         ))}
       </div>
     </div>
