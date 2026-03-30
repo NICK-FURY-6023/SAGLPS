@@ -15,16 +15,20 @@ const PRODUCT_API = '/api/jaquar-product';
 // Preloaded product database (loaded once from static JSON)
 let _productDB = null;
 let _productDBPromise = null;
+let _productDBReady = false;
 
 function loadProductDB() {
   if (_productDB) return Promise.resolve(_productDB);
   if (_productDBPromise) return _productDBPromise;
   _productDBPromise = fetch('/jaquar-products.json')
     .then(r => r.ok ? r.json() : [])
-    .then(data => { _productDB = data; return data; })
-    .catch(() => { _productDB = []; return []; });
+    .then(data => { _productDB = data; _productDBReady = true; return data; })
+    .catch(() => { _productDB = []; _productDBReady = true; return []; });
   return _productDBPromise;
 }
+
+// Start preloading immediately on module load
+loadProductDB();
 
 // Instant client-side search against preloaded DB
 function searchLocal(query, db) {
@@ -154,9 +158,21 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
 
   // Instant local search when query changes
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2 || !productDB) {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
       setSearchResults([]);
       setSearchLoading(false);
+      return;
+    }
+    if (!productDB) {
+      // DB still loading — wait for it then search
+      setSearchLoading(true);
+      loadProductDB().then(db => {
+        setProductDB(db);
+        const results = searchLocal(debouncedQuery, db);
+        setSearchResults(results);
+        setSearchLoading(false);
+        setShowDropdown(results.length > 0);
+      });
       return;
     }
     const results = searchLocal(debouncedQuery, productDB);
@@ -247,8 +263,10 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
             <div style={{ fontSize: 13, fontWeight: 600, color: label.product?.trim() ? '#f1f5f9' : '#475569' }}>
               {label.product?.trim() || 'Empty label'}
             </div>
-            {label.price?.trim() && (
-              <div style={{ fontSize: 11, color: '#f97316', marginTop: 1 }}>₹{label.price}</div>
+            {label.code?.trim() && (
+              <div style={{ fontSize: 10, color: '#f97316', marginTop: 1, fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+                {label.code} {label.price?.trim() ? ` • ₹${label.price}` : ''}
+              </div>
             )}
           </div>
         </div>
@@ -401,7 +419,7 @@ export default function LabelEditor({ labels, setLabels }) {
               key={i}
               className={`label-dot${i === activeIndex ? ' active' : ''}${isFilled(l) ? ' filled' : ''}`}
               onClick={() => setActiveIndex(i)}
-              title={l.product?.trim() || `Label ${i + 1}`}
+              title={l.code?.trim() ? `${l.code} — ${l.product || ''}` : (l.product?.trim() || `Label ${i + 1}`)}
             >
               {i + 1}
             </button>
@@ -418,6 +436,37 @@ export default function LabelEditor({ labels, setLabels }) {
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#334155', display: 'inline-block' }} /> Empty
           </span>
         </div>
+
+        {/* Quick summary: which label has which code */}
+        {filledCount > 0 && (
+          <div style={{ marginTop: 10, borderTop: '1px solid #334155', paddingTop: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: '#475569', letterSpacing: '0.08em', marginBottom: 5 }}>FILLED LABELS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {labels.map((l, i) => {
+                if (!isFilled(l)) return null;
+                return (
+                  <button key={i} onClick={() => setActiveIndex(i)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
+                    background: i === activeIndex ? 'rgba(249,115,22,0.1)' : 'transparent',
+                    border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left', width: '100%',
+                  }}>
+                    <span style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                      background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 700, color: 'white',
+                    }}>{i + 1}</span>
+                    <span style={{ fontSize: 10, color: '#f97316', fontFamily: 'monospace', fontWeight: 600 }}>
+                      {l.code?.trim() || '—'}
+                    </span>
+                    <span style={{ fontSize: 9, color: '#64748b', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1 }}>
+                      {l.product?.trim() || ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bulk Apply Panel */}
