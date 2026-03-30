@@ -60,11 +60,13 @@ export default function App() {
               }}
             />
             <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/"    element={<Landing />} />
-                <Route path="/app" element={<ProtectedApp />} />
-                <Route path="*"    element={<Navigate to="/" replace />} />
-              </Routes>
+              <main>
+                <Routes>
+                  <Route path="/"    element={<Landing />} />
+                  <Route path="/app" element={<ProtectedApp />} />
+                  <Route path="*"    element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
             </Suspense>
           </ThemeProvider>
         </AuthProvider>

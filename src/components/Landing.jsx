@@ -239,7 +239,7 @@ function SheetMockup() {
           <div key={i} style={{ background: '#fafafa', border: '0.5px solid #e2e8f0', borderRadius: 3, padding: '4px 5px 4px 8px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(180deg, #f97316, #ea580c)' }} />
             <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 5.5, marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.code}</div>
-            <div style={{ color: '#475569', fontSize: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</div>
+            <div style={{ color: '#64748b', fontSize: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</div>
             <div style={{ color: '#ea580c', fontWeight: 800, marginTop: 1, fontSize: 5.5 }}>\u20B9{d.price}</div>
           </div>
         ))}
@@ -403,7 +403,7 @@ export default function Landing() {
             <Reveal delay={0.1}>
               <h1 style={{ fontSize: 'clamp(42px, 6vw, 76px)', fontWeight: 900, lineHeight: 1.02, margin: '0 0 24px', letterSpacing: -3 }}>
                 Print Labels<br />
-                <span style={{ background: 'linear-gradient(135deg, #f97316 20%, #fbbf24 50%, #f97316 80%)', backgroundSize: '200% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'shimmer 3s linear infinite' }}>
+                <span style={{ background: 'linear-gradient(135deg, #f97316 20%, #fbbf24 50%, #f97316 80%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                   Like a Pro
                 </span>
               </h1>
@@ -440,7 +440,7 @@ export default function Landing() {
                 ].map((s, i) => (
                   <div key={i}>
                     <div style={{ fontSize: 24, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 6, fontWeight: 500 }}>{s.l}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 6, fontWeight: 500 }}>{s.l}</div>
                   </div>
                 ))}
               </div>
@@ -461,7 +461,7 @@ export default function Landing() {
         </div>
 
         <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }}
-          style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#334155' }}>
+          style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#475569' }}>
           <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Scroll</div>
           <Icon d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" size={16} color="#334155" />
         </motion.div>
@@ -480,7 +480,7 @@ export default function Landing() {
               <div style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 900, color: item.c, lineHeight: 1 }}>
                 <Counter target={item.v} suffix={item.s} />
               </div>
-              <div style={{ fontSize: 11, color: '#475569', marginTop: 8, fontWeight: 600, letterSpacing: 0.5 }}>{item.l}</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 8, fontWeight: 600, letterSpacing: 0.5 }}>{item.l}</div>
             </motion.div>
           ))}
         </div>
@@ -496,7 +496,7 @@ export default function Landing() {
                 Product Showcase
               </div>
               <h2 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)', fontWeight: 900, margin: 0, letterSpacing: -2 }}>Everything in One System</h2>
-              <p style={{ color: '#475569', fontSize: 16, marginTop: 16, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.75 }}>
+              <p style={{ color: '#64748b', fontSize: 16, marginTop: 16, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.75 }}>
                 From Jaquar product search to multi-page PDF export \u2014 a complete label printing solution built for professionals.
               </p>
             </div>
@@ -521,7 +521,7 @@ export default function Landing() {
                       <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.7, margin: 0 }}>{cat.desc}</p>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                         <span style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9' }}>{cat.stat}</span>
-                        <span style={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>{cat.statLabel}</span>
+                        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{cat.statLabel}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -559,7 +559,7 @@ export default function Landing() {
                   <div key={i} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12 }}>
                     <div style={{ fontSize: 18, marginBottom: 6 }}>{f.icon}</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>{f.label}</div>
-                    <div style={{ fontSize: 10, color: '#475569' }}>{f.desc}</div>
+                    <div style={{ fontSize: 10, color: '#64748b' }}>{f.desc}</div>
                   </div>
                 ))}
               </div>
@@ -585,7 +585,7 @@ export default function Landing() {
                 Features
               </div>
               <h2 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)', fontWeight: 900, margin: 0, letterSpacing: -2 }}>Built for Speed & Precision</h2>
-              <p style={{ color: '#475569', fontSize: 16, marginTop: 16, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.75 }}>
+              <p style={{ color: '#64748b', fontSize: 16, marginTop: 16, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.75 }}>
                 Every feature designed to make label printing faster, more accurate, and effortless.
               </p>
             </div>
@@ -625,7 +625,7 @@ export default function Landing() {
                 Workflow
               </div>
               <h2 style={{ fontSize: 'clamp(32px, 4.5vw, 56px)', fontWeight: 900, margin: 0, letterSpacing: -2 }}>Four Simple Steps</h2>
-              <p style={{ color: '#475569', fontSize: 16, marginTop: 16, lineHeight: 1.75 }}>From login to perfect print output in seconds.</p>
+              <p style={{ color: '#64748b', fontSize: 16, marginTop: 16, lineHeight: 1.75 }}>From login to perfect print output in seconds.</p>
             </div>
           </Reveal>
 
@@ -703,7 +703,7 @@ export default function Landing() {
       <section style={{ position: 'relative', zIndex: 1, padding: '80px clamp(20px, 4vw, 48px)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
           <Reveal>
-            <div style={{ fontSize: 10, color: '#334155', letterSpacing: 2.5, fontWeight: 700, textTransform: 'uppercase', marginBottom: 28 }}>Built With Modern Technology</div>
+            <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2.5, fontWeight: 700, textTransform: 'uppercase', marginBottom: 28 }}>Built With Modern Technology</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
               {TECH.map(t => (
                 <motion.span key={t}
@@ -728,7 +728,7 @@ export default function Landing() {
                 Perfect Labels?
               </span>
             </h2>
-            <p style={{ color: '#475569', fontSize: 17, marginBottom: 48, lineHeight: 1.8, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ color: '#64748b', fontSize: 17, marginBottom: 48, lineHeight: 1.8, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
               Open the admin dashboard and start printing professional labels with Jaquar product integration.
             </p>
             <motion.button
@@ -748,7 +748,7 @@ export default function Landing() {
         <div style={{ maxWidth: 1300, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BrandMark size={24} />
-            <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>Shree Ganpati Agency \u2014 Label Print System v3.0</span>
+            <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>Shree Ganpati Agency \u2014 Label Print System v3.0</span>
           </div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
             <a href="https://github.com/ATUL-MAHARAJ/printer-image-generator" target="_blank" rel="noreferrer"

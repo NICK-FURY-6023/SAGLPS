@@ -83,13 +83,10 @@
   from { opacity: 0; transform: translateX(-16px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
-}
 @keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.7; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes float-subtle {
@@ -97,8 +94,8 @@
   50%      { transform: translateY(-3px); }
 }
 @keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(249,115,22,0.2), 0 0 12px rgba(249,115,22,0.1); }
-  50%      { box-shadow: 0 0 0 3px rgba(249,115,22,0.35), 0 0 20px rgba(249,115,22,0.15); }
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
 }
 @keyframes selected-pulse {
   0%, 100% { opacity: 1; }
@@ -222,6 +219,7 @@
 .label-card:hover  { border-color: #475569; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 .label-card.active {
   border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.25), 0 0 16px rgba(249,115,22,0.12);
   animation: glow-ring 2s ease-in-out infinite;
   transform: translateY(-2px);
 }
