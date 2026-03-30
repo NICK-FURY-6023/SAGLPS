@@ -113,6 +113,7 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
   const [open, setOpen] = useState(index === 0);
   const cardRef = useRef(null);
   const filled = isFilled(label);
+  const [priceHint, setPriceHint] = useState('');
 
   // Jaquar search state
   const [searchField, setSearchField] = useState(null);
@@ -191,6 +192,7 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
     }
     if (priceData && priceData.price) {
       extraFields.price = priceData.price;
+      setPriceHint(`~Market Price ₹${priceData.price} (IndustryBuying) — MRP se alag ho sakta hai, verify karo`);
     }
     if (Object.keys(extraFields).length > 0) {
       onFillMulti(extraFields);
@@ -270,12 +272,20 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
                   <input
                     type="text"
                     value={label[key] || ''}
-                    onChange={e => searchable ? handleSearchableChange(key, e.target.value) : onChange(key, e.target.value)}
+                    onChange={e => {
+                      if (searchable) handleSearchableChange(key, e.target.value);
+                      else { onChange(key, e.target.value); if (key === 'price') setPriceHint(''); }
+                    }}
                     onFocus={() => { if (searchable) { setSearchField(key); if (searchResults.length > 0) setShowDropdown(true); } }}
                     placeholder={placeholder}
                     className="input-dark"
                     style={{ fontSize: 12, padding: '7px 10px' }}
                   />
+                  {key === 'price' && priceHint && (
+                    <div style={{ fontSize: 9, color: '#f59e0b', marginTop: 3, lineHeight: 1.3 }}>
+                      ⚠️ {priceHint}
+                    </div>
+                  )}
                   {searchable && searchField === key && (
                     <JaquarSearchDropdown
                       results={searchResults}
