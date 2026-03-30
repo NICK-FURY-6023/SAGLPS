@@ -220,9 +220,27 @@ function HistoryModal({ onClose, onRestore }) {
   }, []);
 
   const clearHistory = () => {
+    if (!confirm('Delete all history? This cannot be undone.')) return;
     localStorage.removeItem(HISTORY_KEY);
     setHistory([]);
     toast.success('History cleared');
+  };
+
+  const deleteEntry = (idx) => {
+    if (!confirm('Delete this history entry?')) return;
+    const updated = history.filter((_, i) => i !== idx);
+    setHistory(updated);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    toast.success('Entry deleted');
+  };
+
+  const fmtDate = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  const fmtTime = (iso) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
   return (
@@ -234,7 +252,7 @@ function HistoryModal({ onClose, onRestore }) {
             <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>Last 30 print / save operations</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {history.length > 0 && <Btn onClick={clearHistory} variant="danger" style={{ fontSize: 11, padding: '5px 10px' }}>Clear</Btn>}
+            {history.length > 0 && <Btn onClick={clearHistory} variant="danger" style={{ fontSize: 11, padding: '5px 10px' }}>Clear All</Btn>}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>×</button>
           </div>
         </div>
@@ -249,23 +267,39 @@ function HistoryModal({ onClose, onRestore }) {
             </div>
           ) : (
             history.map((h, i) => (
-              <div key={i} style={{ padding: '14px 24px', borderBottom: i < history.length - 1 ? '1px solid #0f172a' : 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div key={h.id || i} style={{ padding: '14px 24px', borderBottom: i < history.length - 1 ? '1px solid #0f172a' : 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: h.action === 'print' ? 'rgba(249,115,22,0.12)' : 'rgba(37,99,235,0.12)', border: `1px solid ${h.action === 'print' ? 'rgba(249,115,22,0.25)' : 'rgba(37,99,235,0.25)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: h.action === 'print' ? '#f97316' : '#60a5fa' }}>
                   <Icon d={h.action === 'print' ? 'M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.75 19.817m.463-5.988a42.453 42.453 0 0 1 10.559 0m0 0L17.25 19.817M12 3v10.5' : 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z'} size={16} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginBottom: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginBottom: 3 }}>
                     {h.templateName || 'Untitled'}
+                    <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8', marginLeft: 8, textTransform: 'capitalize' }}>{h.action}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
-                    {h.filledCount}/12 labels · {h.copies > 1 ? `${h.copies} copies · ` : ''}{new Date(h.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>
+                    {h.filledCount}/12 labels{h.copies > 1 ? ` · ${h.copies} copies` : ''}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>📅 {fmtDate(h.time)}</span>
+                    <span>🕐 {fmtTime(h.time)}</span>
                   </div>
                 </div>
-                {h.labels && (
-                  <Btn onClick={() => { onRestore(h.labels, h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px', flexShrink: 0 }}>
-                    Restore
-                  </Btn>
-                )}
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {h.labels && (
+                    <Btn onClick={() => { onRestore(h.labels, h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
+                      Restore
+                    </Btn>
+                  )}
+                  <button
+                    onClick={() => deleteEntry(i)}
+                    title="Delete this entry"
+                    style={{ background: 'none', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', cursor: 'pointer', padding: '4px 8px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <Icon d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V3.5A1.5 1.5 0 0 1 9.5 2h5A1.5 1.5 0 0 1 16 3.5V7" size={14} />
+                  </button>
+                </div>
               </div>
             ))
           )}

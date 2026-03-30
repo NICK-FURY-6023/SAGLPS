@@ -2,12 +2,23 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/api';
 
+const LOCAL_KEY = 'ganpati_templates';
+
+// localStorage fallback for when Supabase is unavailable
+function localTemplates() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
+}
+function saveLocalTemplates(arr) {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(arr));
+}
+
 export default function TemplateManager({ mode, labels, onLoad, onClose }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [isLocal, setIsLocal] = useState(false);
 
   useEffect(() => { loadTemplates(); }, []);
 
@@ -16,13 +27,11 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
     try {
       const data = await getTemplates();
       setTemplates(Array.isArray(data) ? data : []);
-    } catch (err) {
-      const msg = err?.response?.data?.error || err?.message || '';
-      if (msg.includes('table not found') || msg.includes('does not exist')) {
-        toast.error('Templates table not found. Run setup SQL in Supabase Dashboard.');
-      } else {
-        toast.error('Could not load templates. Check Supabase config.');
-      }
+      setIsLocal(false);
+    } catch {
+      // Supabase unavailable — use localStorage
+      setTemplates(localTemplates());
+      setIsLocal(true);
     } finally {
       setLoading(false);
     }
@@ -32,6 +41,22 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
     const name = newName.trim();
     if (!name) return;
     setSaving(true);
+
+    if (isLocal) {
+      // Save to localStorage
+      const existing = localTemplates();
+      const idx = existing.findIndex(t => t.name === name);
+      const entry = { id: Date.now().toString(), name, label_data: labels, created_at: new Date().toISOString() };
+      if (idx >= 0) { existing[idx] = { ...existing[idx], label_data: labels, name }; }
+      else { existing.unshift(entry); }
+      saveLocalTemplates(existing);
+      setTemplates(existing);
+      setNewName('');
+      setSaving(false);
+      toast.success(idx >= 0 ? `Updated "${name}"` : `Saved "${name}"`);
+      return;
+    }
+
     try {
       const existing = templates.find(t => t.name === name);
       if (existing) {
@@ -44,15 +69,32 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
       await loadTemplates();
       setNewName('');
     } catch {
-      toast.error('Failed to save template.');
+      // API failed — fallback to local
+      const local = localTemplates();
+      local.unshift({ id: Date.now().toString(), name, label_data: labels, created_at: new Date().toISOString() });
+      saveLocalTemplates(local);
+      setTemplates(local);
+      setIsLocal(true);
+      setNewName('');
+      toast.success(`Saved "${name}" locally (cloud unavailable)`);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Delete "${name}"?`)) return;
+    if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return;
     setDeletingId(id);
+
+    if (isLocal) {
+      const updated = localTemplates().filter(t => t.id !== id);
+      saveLocalTemplates(updated);
+      setTemplates(updated);
+      setDeletingId(null);
+      toast('Template deleted', { icon: '🗑️' });
+      return;
+    }
+
     try {
       await deleteTemplate(id);
       setTemplates(ts => ts.filter(t => t.id !== id));
@@ -86,6 +128,7 @@ export default function TemplateManager({ mode, labels, onLoad, onClose }) {
             </h2>
             <p style={{ fontSize: 11, color: '#475569', margin: '2px 0 0' }}>
               {templates.length} template{templates.length !== 1 ? 's' : ''} saved
+              {isLocal && <span style={{ color: '#f59e0b', marginLeft: 6 }}>📁 Local storage</span>}
             </p>
           </div>
           <button
