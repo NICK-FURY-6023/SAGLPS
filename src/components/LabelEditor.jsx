@@ -286,9 +286,11 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
     // Build product URL for Jaquar website
     const jaquarUrl = product.url ? `https://www.jaquar.com${product.url}` : '';
 
-    // Auto-fill mfg date with current month/year
+    // Auto-fill mfg date — random month within last 3-4 months
     const now = new Date();
-    const mfgDate = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const offset = Math.floor(Math.random() * 4); // 0 to 3 months back
+    const mfgMonth = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    const mfgDate = `${String(mfgMonth.getMonth() + 1).padStart(2, '0')}/${mfgMonth.getFullYear()}`;
 
     // Fill ALL fields instantly from local DB (code, name, price, image, mfgDate)
     const fields = {
