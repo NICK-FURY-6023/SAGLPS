@@ -37,6 +37,52 @@ function useQRCode(url) {
   return dataUrl;
 }
 
+function buildTextLines(text, maxCharsPerLine, maxLines) {
+  const normalized = (text || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+
+  const words = normalized.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (candidate.length <= maxCharsPerLine) {
+      currentLine = candidate;
+      continue;
+    }
+
+    if (currentLine) lines.push(currentLine);
+
+    if (lines.length === maxLines) break;
+
+    if (word.length <= maxCharsPerLine) {
+      currentLine = word;
+      continue;
+    }
+
+    let remaining = word;
+    while (remaining.length > maxCharsPerLine && lines.length < maxLines) {
+      lines.push(remaining.slice(0, maxCharsPerLine - 1));
+      remaining = remaining.slice(maxCharsPerLine - 1);
+    }
+    currentLine = remaining;
+  }
+
+  if (currentLine && lines.length < maxLines) {
+    lines.push(currentLine);
+  }
+
+  const consumedLength = lines.join(' ').length;
+  const wasTrimmed = consumedLength < normalized.length;
+  if (wasTrimmed && lines.length) {
+    const lastIndex = lines.length - 1;
+    lines[lastIndex] = `${lines[lastIndex].replace(/[.\s]+$/g, '')}...`;
+  }
+
+  return lines.slice(0, maxLines);
+}
+
 const LabelCell = memo(function LabelCell({ label }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
@@ -61,6 +107,8 @@ const LabelCell = memo(function LabelCell({ label }) {
 
   const isEmpty = !code && !product && !price && !description;
   const hasProductImg = productImage && !imgError;
+  const productLines = buildTextLines(product, hasProductImg ? 34 : 42, 2);
+  const descriptionLines = buildTextLines(description, hasProductImg ? 42 : 52, productLines.length === 2 ? 2 : 3);
 
   return (
     <div style={{
@@ -171,28 +219,34 @@ const LabelCell = memo(function LabelCell({ label }) {
           {/* Text content */}
           <div style={{
             flex: '1 1 auto', display: 'flex', flexDirection: 'column',
-            justifyContent: 'center', padding: '1mm 1.5mm',
+            justifyContent: 'flex-start', padding: '1.1mm 1.5mm 0.8mm',
             minWidth: 0, overflow: 'hidden',
           }}>
-            {product && (
+            {productLines.length > 0 && (
               <div style={{
                 fontSize: s(4.5), fontWeight: 900,
-                textTransform: 'uppercase', lineHeight: 1.3,
-                overflow: 'hidden', wordBreak: 'break-word',
-                maxHeight: '2.6em',
+                textTransform: 'uppercase', lineHeight: 1.22,
+                overflow: 'hidden',
               }}>
-                {product}
+                {productLines.map((line, index) => (
+                  <div key={`product-${index}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    {line}
+                  </div>
+                ))}
               </div>
             )}
-            {(description || (!product && !isEmpty)) && (
+            {(descriptionLines.length > 0 || (!product && !isEmpty)) && (
               <div style={{
                 fontSize: s(3.5), fontWeight: 600,
-                lineHeight: 1.3, textTransform: 'uppercase',
-                overflow: 'hidden', wordBreak: 'break-word',
-                marginTop: product ? '0.5mm' : 0,
-                maxHeight: '2.6em',
+                lineHeight: 1.18, textTransform: 'uppercase',
+                overflow: 'hidden',
+                marginTop: productLines.length > 0 ? '0.5mm' : 0,
               }}>
-                {description || ''}
+                {descriptionLines.map((line, index) => (
+                  <div key={`description-${index}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    {line}
+                  </div>
+                ))}
               </div>
             )}
           </div>
