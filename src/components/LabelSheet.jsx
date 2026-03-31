@@ -75,7 +75,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
       {/* ── LEFT VERTICAL STRIP — Model Number (rotated 90°, centered) ── */}
       <div style={{
         width: '5.5mm', flexShrink: 0, borderRight: B,
-        background: '#000', color: '#fff',
+        background: '#fff', color: '#000',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', position: 'relative',
       }}>

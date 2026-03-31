@@ -166,19 +166,18 @@ export default function LabelPreview({
           pdf.setLineWidth(0.35);
           pdf.rect(cx, cy, CW, CH);
 
-          // ── LEFT VERTICAL STRIP — black with white rotated model number ──
+          // ── LEFT VERTICAL STRIP — white with black rotated model number ──
           const STRIP_W = 5.5;
-          pdf.setFillColor(0, 0, 0);
-          pdf.rect(cx, cy, STRIP_W, CH, 'F');
+          pdf.setDrawColor(0, 0, 0);
+          pdf.setLineWidth(0.12);
           pdf.line(cx + STRIP_W, cy, cx + STRIP_W, cy + CH);
 
           const code = label.code?.trim() || '';
           if (code) {
-            pdf.setTextColor(255, 255, 255);
+            pdf.setTextColor(0, 0, 0);
             pdf.setFontSize(s(5));
             pdf.setFont('helvetica', 'bold');
             pdf.text(code, cx + STRIP_W / 2, cy + CH / 2, { angle: 90, align: 'center' });
-            pdf.setTextColor(0, 0, 0);
           }
 
           // Content area after the strip
