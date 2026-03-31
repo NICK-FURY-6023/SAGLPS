@@ -7,7 +7,8 @@
  * (prices are geo-restricted to India).
  */
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://printer-image-generator.vercel.app';
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -15,6 +16,10 @@ module.exports = async (req, res) => {
 
   const productUrl = (req.query.url || '').trim();
   if (!productUrl) return res.status(400).json({ error: 'url param required' });
+  // SSRF protection: only allow jaquar.com paths
+  if (!productUrl.startsWith('/en/') && !productUrl.startsWith('/in/')) {
+    return res.status(400).json({ error: 'Invalid product URL — must be a jaquar.com path' });
+  }
 
   try {
     const fullUrl = `https://www.jaquar.com${productUrl}`;
@@ -26,6 +31,7 @@ module.exports = async (req, res) => {
         'X-Forwarded-For': '103.21.125.1',
       },
     });
+    if (!resp.ok) return res.status(502).json({ error: `Upstream returned HTTP ${resp.status}` });
     const html = await resp.text();
 
     // Extract product name

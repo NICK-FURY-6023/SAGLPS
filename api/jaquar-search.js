@@ -45,6 +45,7 @@ async function fetchSearch(query) {
       'X-Forwarded-For': '103.21.125.1',
     },
   });
+  if (!resp.ok) throw new Error(`Upstream returned HTTP ${resp.status}`);
   return await resp.text();
 }
 
@@ -54,7 +55,8 @@ function looksLikeCode(q) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://printer-image-generator.vercel.app';
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -62,6 +64,7 @@ module.exports = async (req, res) => {
 
   const q = (req.query.q || '').trim();
   if (!q || q.length < 2) return res.json([]);
+  if (q.length > 100) return res.json([]); // prevent abuse
 
   try {
     const html = await fetchSearch(q);

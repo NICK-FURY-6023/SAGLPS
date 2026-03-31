@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import LabelSheet from './LabelSheet';
 
@@ -42,9 +43,11 @@ function ToolBtn({ onClick, disabled, title, children, variant = 'ghost', style:
 
 export default function LabelPreview({
   labels,
+  pages,
   onSave, onLoad, onPrint,
   copies = 1, onCopiesChange,
   fontScale = 1, onFontScaleChange,
+  fieldStyles, onFieldStylesChange,
 }) {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(0.6);
@@ -73,52 +76,192 @@ export default function LabelPreview({
     setPdfLoading(true);
     const tid = toast.loading('Generating PDF…');
     try {
-      const { default: jsPDF }       = await import('jspdf');
-      const { default: html2canvas } = await import('html2canvas');
-      const sheet = document.querySelector('.print-sheet');
-      if (!sheet) throw new Error('Sheet not found');
+      const { default: jsPDF } = await import('jspdf');
+      const QRLib = (await import('qrcode')).default;
 
-      // Clone sheet into an off-screen full-size container so the
-      // parent's preview transform (scale) doesn't shrink the capture.
-      const offscreen = document.createElement('div');
-      offscreen.style.cssText =
-        'position:fixed;top:0;left:0;width:210mm;height:297mm;z-index:-9999;overflow:hidden;pointer-events:none;background:#fff;';
-      const clone = sheet.cloneNode(true);
-      clone.style.transform = 'none';
-      offscreen.appendChild(clone);
-      document.body.appendChild(offscreen);
+      const pdf = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait', compress: true });
 
-      // Wait a tick for images inside the clone to start loading
-      await new Promise(r => setTimeout(r, 600));
+      // ── Layout constants (must match CSS .sheet grid) ──
+      const PX = 3.5, GAP = 1;
+      const PY_TOP = 7 + printMargin, PY_BOT = 7 - printMargin;
+      const CW = (210 - PX * 2 - GAP) / 2;
+      const CH = (297 - PY_TOP - PY_BOT - GAP * 5) / 6;
+      const LOGO_W = 18, QR_W = 13;
+      const s = (pt) => pt * fontScale;
+      const sf = (pt, field) => pt * fontScale * (fieldStyles?.[field]?.size || 1);
+      const PT2MM = 0.3528;
 
-      const canvas = await html2canvas(clone, {
-        scale: 4, useCORS: true, allowTaint: false,
-        backgroundColor: '#ffffff',
-        width: A4_W, height: A4_H,
-        windowWidth: A4_W, windowHeight: A4_H,
-      });
+      // ── Pre-load images ──
+      async function loadImg(url) {
+        if (!url) return null;
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = url;
+          await new Promise((r, e) => { img.onload = r; img.onerror = e; });
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          return { data: c.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight };
+        } catch { return null; }
+      }
 
-      document.body.removeChild(offscreen);
+      const allPages = pages || [labels];
 
-      const pdf = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait' });
-      pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, 210, 297);
+      // ── Pre-load images for ALL pages ──
+      const logoCache = {};
+      const qrCache = {};
+      for (const pageLabels of allPages) {
+        const safeLabels = Array.from({ length: 12 }, (_, i) => ({
+          product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '',
+          ...(pageLabels[i] || {})
+        }));
+        for (const l of safeLabels) {
+          const url = l.logoUrl?.trim() || '/jaquar-logo.png';
+          if (!logoCache[url]) logoCache[url] = await loadImg(url);
+        }
+        for (const l of safeLabels) {
+          const url = l.productUrl?.trim();
+          if (url && !qrCache[url]) {
+            try { qrCache[url] = await QRLib.toDataURL(url, { width: 200, margin: 0, errorCorrectionLevel: 'M' }); }
+            catch { /* skip */ }
+          }
+        }
+      }
+
+      // ── Helper: fit image maintaining aspect ratio ──
+      function fitImg(img, maxW, maxH) {
+        const scale = Math.min(maxW / img.w, maxH / img.h);
+        return { w: img.w * scale, h: img.h * scale };
+      }
+
+      // ── Render all pages × copies ──
+      let isFirstPage = true;
+      for (let copy = 0; copy < copies; copy++) {
+        for (let pageIdx = 0; pageIdx < allPages.length; pageIdx++) {
+          if (!isFirstPage) pdf.addPage();
+          isFirstPage = false;
+          const safeLabels = Array.from({ length: 12 }, (_, i) => allPages[pageIdx][i] || {});
+
+        for (let idx = 0; idx < 12; idx++) {
+          const label = safeLabels[idx];
+          const col = idx % 2, row = Math.floor(idx / 2);
+          const cx = PX + col * (CW + GAP);
+          const cy = PY_TOP + row * (CH + GAP);
+
+          // Cell border
+          pdf.setDrawColor(34, 34, 34);
+          pdf.setLineWidth(0.2);
+          pdf.rect(cx, cy, CW, CH);
+
+          // ── Logo section ──
+          pdf.line(cx + LOGO_W, cy, cx + LOGO_W, cy + CH);
+          const logoUrl = label.logoUrl?.trim() || '/jaquar-logo.png';
+          const logo = logoCache[logoUrl];
+          if (logo) {
+            const pad = 2;
+            const fit = fitImg(logo, LOGO_W - pad * 2, CH - pad * 2);
+            try {
+              pdf.addImage(logo.data, 'PNG',
+                cx + (LOGO_W - fit.w) / 2, cy + (CH - fit.h) / 2, fit.w, fit.h);
+            } catch { /* skip */ }
+          } else {
+            // Fallback: brand name text
+            const brand = label.manufacturer?.trim();
+            if (brand) {
+              pdf.setFontSize(s(8));
+              pdf.setFont('helvetica', 'bolditalic');
+              pdf.text(brand, cx + LOGO_W / 2, cy + CH / 2, { align: 'center', maxWidth: LOGO_W - 2 });
+            }
+          }
+
+          // ── QR code section ──
+          const pUrl = label.productUrl?.trim();
+          const qrData = pUrl ? qrCache[pUrl] : null;
+          if (qrData) {
+            pdf.line(cx + CW - QR_W, cy, cx + CW - QR_W, cy + CH);
+            const qrPad = 2;
+            const qrSize = Math.min(QR_W - qrPad * 2, CH - qrPad * 2);
+            try {
+              pdf.addImage(qrData, 'PNG',
+                cx + CW - QR_W + (QR_W - qrSize) / 2, cy + (CH - qrSize) / 2, qrSize, qrSize);
+            } catch { /* skip */ }
+          }
+
+          // ── Text section ──
+          const txtPad = 2;
+          const txtX = cx + LOGO_W + txtPad;
+          const txtEndX = cx + CW - (qrData ? QR_W : 0) - 1;
+          const txtW = txtEndX - txtX;
+          const LBL_W = 16;
+          const valX = txtX + LBL_W + 1;
+          const valW = txtW - LBL_W - 1;
+
+          const code = label.code?.trim() || '';
+          const product = label.product?.trim() || '';
+          const desc = label.description?.trim() || '';
+          const price = label.price?.trim() || '';
+
+          const textRows = [];
+          if (code)    textRows.push({ lbl: 'Product Code',  val: code,                 lblS: sf(6, 'code'),  valS: sf(6, 'code'),   vBold: true,  max: 1 });
+          if (product) textRows.push({ lbl: 'Product Name',  val: product.toUpperCase(), lblS: sf(6, 'name'),  valS: sf(5.5, 'name'), vBold: true,  max: 2 });
+          if (desc)    textRows.push({ lbl: 'Product Desc',  val: desc,                  lblS: sf(6, 'desc'),  valS: sf(5, 'desc'),   vBold: true,  max: 2 });
+          if (price)   textRows.push({ lbl: 'Product Price', val: `Rs. ${price}`,        lblS: sf(6, 'price'), valS: sf(7, 'price'),  vBold: true,  max: 1 });
+
+          if (textRows.length === 0) continue;
+
+          // Compute line heights and wrapped text
+          const rowGap = 0.8;
+          let totalH = 0;
+          const comp = textRows.map(r => {
+            pdf.setFontSize(r.valS);
+            pdf.setFont('helvetica', r.vBold ? 'bold' : 'normal');
+            const lines = pdf.splitTextToSize(r.val, valW).slice(0, r.max);
+            const lineH = r.valS * PT2MM * 1.3;
+            const rowH = lineH * lines.length;
+            totalH += rowH;
+            return { ...r, lines, rowH, lineH };
+          });
+          totalH += rowGap * (comp.length - 1);
+
+          // Vertically center text block in cell
+          let ty = cy + (CH - totalH) / 2 + comp[0].lineH * 0.75;
+
+          for (const r of comp) {
+            // Label (bold)
+            pdf.setFontSize(r.lblS);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(r.lbl, txtX, ty);
+            pdf.text(':', txtX + LBL_W - 0.5, ty);
+            // Value
+            pdf.setFontSize(r.valS);
+            pdf.setFont('helvetica', r.vBold ? 'bold' : 'normal');
+            pdf.text(r.lines, valX, ty);
+            ty += r.rowH + rowGap;
+          }
+        }
+        } // end pageIdx loop
+      }
+
       pdf.save('ganpati-labels.pdf');
       toast.success('PDF downloaded!', { id: tid });
-    } catch {
-      toast.error('PDF failed. Use Print → Save as PDF instead.', { id: tid });
+    } catch (err) {
+      toast.error(`PDF generation failed: ${err?.message || 'Unknown error'}. Try Ctrl+P → Save as PDF.`, { id: tid });
     } finally {
       setPdfLoading(false);
     }
   };
 
   const filledCount = labels.filter(l => l.product?.trim()).length;
+  const totalPages = pages ? pages.length : 1;
+  const totalFilled = pages ? pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0) : filledCount;
 
   return (
     <div ref={containerRef} style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 16, gap: 12 }}>
 
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
-      <div style={{
-        background: '#1e293b', borderRadius: 12, padding: '10px 14px',
+      <div className="depth-shadow" style={{
+        background: 'linear-gradient(180deg, #1e293b, #1a2536)', borderRadius: 12, padding: '10px 14px',
         border: '1px solid #334155', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
         flexShrink: 0,
       }}>
@@ -151,6 +294,50 @@ export default function LabelPreview({
           PDF
         </ToolBtn>
 
+        {/* PNG Export */}
+        <ToolBtn onClick={async () => {
+          const tid = toast.loading('Generating PNG…');
+          try {
+            const { default: html2canvas } = await import('html2canvas');
+            const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
+            if (!sheet) throw new Error('Preview not found');
+            const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const link = document.createElement('a');
+            link.download = `ganpati-labels-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            toast.success('PNG downloaded!', { id: tid });
+          } catch (err) { toast.error(`PNG failed: ${err?.message || 'Error'}`, { id: tid }); }
+        }} variant="ghost">
+          <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
+          PNG
+        </ToolBtn>
+
+        {/* SVG Export */}
+        <ToolBtn onClick={async () => {
+          const tid = toast.loading('Generating SVG…');
+          try {
+            const { default: html2canvas } = await import('html2canvas');
+            const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
+            if (!sheet) throw new Error('Preview not found');
+            const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            const dataUrl = canvas.toDataURL('image/png');
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+              <image href="${dataUrl}" width="${canvas.width}" height="${canvas.height}"/>
+            </svg>`;
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            const link = document.createElement('a');
+            link.download = `ganpati-labels-${Date.now()}.svg`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 200);
+            toast.success('SVG downloaded!', { id: tid });
+          } catch (err) { toast.error(`SVG failed: ${err?.message || 'Error'}`, { id: tid }); }
+        }} variant="ghost">
+          <Icon d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4" />
+          SVG
+        </ToolBtn>
+
         {/* Save / Load */}
         <ToolBtn onClick={onSave} variant="ghost">
           <Icon d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -173,7 +360,7 @@ export default function LabelPreview({
 
         {/* Stats */}
         <div style={{ padding: '4px 10px', borderRadius: 20, background: '#0f172a', border: '1px solid #334155', fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
-          {filledCount}/12 &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
+          {totalFilled}/{totalPages * 12}{totalPages > 1 ? ` (${totalPages}pg)` : ''} &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
         </div>
       </div>
 
@@ -190,7 +377,7 @@ export default function LabelPreview({
 
           {/* Top margin */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Top margin offset</label>
+            <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Top margin offset <span style={{ fontSize: 9, color: '#475569' }}>(− up, + down)</span></label>
             <input type="range" min="-5" max="5" step="0.5"
               value={printMargin} onChange={e => setPrintMargin(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#f97316' }} />
@@ -203,7 +390,7 @@ export default function LabelPreview({
           {/* Font scale */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <label style={{ fontSize: 12, color: '#64748b', minWidth: 130 }}>Font size scale</label>
-            <input type="range" min="0.8" max="1.3" step="0.05"
+            <input type="range" min="0.6" max="1.5" step="0.05"
               value={fontScale} onChange={e => onFontScaleChange && onFontScaleChange(Number(e.target.value))}
               style={{ flex: 1, accentColor: '#7c3aed' }} />
             <span style={{ fontSize: 12, color: '#7c3aed', minWidth: 44, textAlign: 'right' }}>
@@ -212,8 +399,51 @@ export default function LabelPreview({
             <ToolBtn onClick={() => onFontScaleChange && onFontScaleChange(1)} variant="ghost" style={{ fontSize: 10, padding: '4px 8px' }}>Reset</ToolBtn>
           </div>
 
+          {/* ── Per-field Size & Bold sliders ── */}
+          {fieldStyles && onFieldStylesChange && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginTop: 4 }}>
+                PER-FIELD CONTROLS
+              </div>
+              {[
+                { key: 'code',  label: 'Product Code',  color: '#38bdf8' },
+                { key: 'name',  label: 'Product Name',  color: '#4ade80' },
+                { key: 'desc',  label: 'Product Desc',  color: '#facc15' },
+                { key: 'price', label: 'Product Price', color: '#fb923c' },
+              ].map(({ key, label, color }) => (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '6px 0', borderTop: '1px solid #0f172a' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: '0.04em' }}>{label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#64748b', minWidth: 36 }}>Size</span>
+                    <input type="range" min="0.5" max="2" step="0.05"
+                      value={fieldStyles[key]?.size ?? 1}
+                      onChange={e => onFieldStylesChange(prev => ({ ...prev, [key]: { ...prev[key], size: Number(e.target.value) } }))}
+                      style={{ flex: 1, accentColor: color }} />
+                    <span style={{ fontSize: 11, color, minWidth: 36, textAlign: 'right' }}>
+                      {Math.round((fieldStyles[key]?.size ?? 1) * 100)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#64748b', minWidth: 36 }}>Bold</span>
+                    <input type="range" min="0.5" max="1.5" step="0.05"
+                      value={fieldStyles[key]?.bold ?? 1}
+                      onChange={e => onFieldStylesChange(prev => ({ ...prev, [key]: { ...prev[key], bold: Number(e.target.value) } }))}
+                      style={{ flex: 1, accentColor: color }} />
+                    <span style={{ fontSize: 11, color, minWidth: 36, textAlign: 'right' }}>
+                      {Math.round((fieldStyles[key]?.bold ?? 1) * 100)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <ToolBtn
+                onClick={() => onFieldStylesChange({ code: { size: 1, bold: 1 }, name: { size: 1, bold: 1 }, desc: { size: 1, bold: 1 }, price: { size: 1, bold: 1 } })}
+                variant="ghost" style={{ fontSize: 10, padding: '5px 10px', alignSelf: 'flex-start' }}
+              >Reset all fields</ToolBtn>
+            </>
+          )}
+
           <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
-            Adjust margin if labels print shifted up/down. Font scale resizes all label text.
+            Adjust margin if labels print shifted. Font scale resizes all text. Per-field controls adjust individual sections.
           </p>
         </div>
       )}
@@ -222,33 +452,38 @@ export default function LabelPreview({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
-          <span style={{ fontSize: 11, color: '#475569' }}>Live A4 Preview &middot; 210×297mm &middot; 12 labels</span>
+          <span style={{ fontSize: 11, color: '#475569' }}>Live A4 Preview &middot; 210×297mm &middot; {totalPages > 1 ? `${totalPages} pages · ` : ''}{totalFilled} labels</span>
         </div>
-        {copies > 1 && (
-          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600 }}>{copies} copies on print</span>
+        {(copies > 1 || totalPages > 1) && (
+          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600 }}>
+            {totalPages * copies} sheet{totalPages * copies > 1 ? 's' : ''} on print
+          </span>
         )}
       </div>
 
-      {/* ── Scaled preview ─────────────────────────────────────────────── */}
+      {/* ── Scaled preview (screen only) ──────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingBottom: 16, overflow: 'hidden' }}>
-        <div style={{
-          width: A4_W * scale, height: A4_H * scale, flexShrink: 0, borderRadius: 4, overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
+        <div className="print-preview-frame card-3d" style={{
+          width: A4_W * scale, height: A4_H * scale, flexShrink: 0, borderRadius: 6, overflow: 'hidden',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 4px 16px rgba(249,115,22,0.08)',
         }}>
           <div className="print-scale-wrapper" style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: A4_W, height: A4_H }}>
-            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
+            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} fieldStyles={fieldStyles} />
           </div>
         </div>
       </div>
 
-      {/* ── Hidden print copies (print-only) ───────────────────────────── */}
-      <div className="print-copies-container" style={{ display: 'none' }}>
-        {Array.from({ length: Math.max(0, copies - 1) }, (_, i) => (
-          <div key={i} className="print-sheet" style={{ pageBreakBefore: 'always' }}>
-            <LabelSheet labels={labels} extraTopMargin={printMargin} fontScale={fontScale} />
-          </div>
-        ))}
-      </div>
+      {/* ── Print Portal: renders directly under <body> for reliable Ctrl+P ── */}
+      {createPortal(
+        <div className="print-root" style={{ display: 'none' }}>
+          {Array.from({ length: copies }, (_, copyIdx) =>
+            (pages || [labels]).map((pageLabels, pageIdx) => (
+              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} extraTopMargin={printMargin} fontScale={fontScale} fieldStyles={fieldStyles} />
+            ))
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
