@@ -186,16 +186,18 @@ export default function LabelPreview({
           const contentW = CW - STRIP_W - 1.5;
           let curY = cy + 0.5;
 
-          // ── TOP ROW: Brand Logo (left) + QR Code (right) ──
+          // ── TOP ROW: Brand Logo + QR Code (side by side, left) ──
           const TOP_H = 8;
           const logoUrl = label.logoUrl?.trim() || '/jaquar-logo.png';
           const logo = logoCache[logoUrl];
+          let logoEndX = contentX;
           if (logo) {
             const pad = 0.5;
             const fit = fitImg(logo, 24, TOP_H - pad * 2);
             try {
               pdf.addImage(logo.data, 'PNG',
                 contentX, curY + (TOP_H - fit.h) / 2, fit.w, fit.h);
+              logoEndX = contentX + fit.w + 1.5;
             } catch { /* skip */ }
           } else {
             const brand = label.manufacturer?.trim();
@@ -203,17 +205,18 @@ export default function LabelPreview({
               pdf.setFontSize(s(8));
               pdf.setFont('helvetica', 'bold');
               pdf.text(brand.toUpperCase(), contentX + 0.5, curY + TOP_H / 2 + 0.8);
+              logoEndX = contentX + pdf.getTextWidth(brand.toUpperCase()) + 2;
             }
           }
 
-          // QR code on right — shifted left to avoid print-cutoff
+          // QR code — right next to logo
           const pUrl = label.productUrl?.trim();
           const qrData = pUrl ? qrCache[pUrl] : null;
           if (qrData) {
             const qrSize = TOP_H - 1.5;
             try {
               pdf.addImage(qrData, 'PNG',
-                contentX + contentW - qrSize - 3, curY + 0.5, qrSize, qrSize);
+                logoEndX, curY + 0.5, qrSize, qrSize);
             } catch { /* skip */ }
           }
 

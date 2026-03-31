@@ -93,16 +93,16 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         overflow: 'hidden', minWidth: 0,
       }}>
 
-        {/* ── TOP ROW: Brand Logo (left) + QR Code (right) ── */}
+        {/* ── TOP ROW: Brand Logo + QR Code (side by side, left) ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center',
           borderBottom: BT, padding: '0.5mm 1mm',
-          minHeight: '8mm', flexShrink: 0,
+          minHeight: '8mm', flexShrink: 0, gap: '1.5mm',
         }}>
           {/* Brand Logo — large, dark, bold */}
           <div style={{
             flex: '0 0 auto', display: 'flex', alignItems: 'center',
-            maxWidth: '60%', overflow: 'hidden',
+            overflow: 'hidden',
           }}>
             {logoUrl && !logoError ? (
               <img src={logoUrl} alt={brand} crossOrigin="anonymous"
@@ -122,12 +122,11 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
             )}
           </div>
 
-          {/* QR Code — shifted left to avoid print-cutoff */}
+          {/* QR Code — right next to logo */}
           {qrDataUrl && (
             <img src={qrDataUrl} alt="QR" style={{
               width: '7mm', height: '7mm',
               objectFit: 'contain', flexShrink: 0,
-              marginRight: '3mm',
             }} />
           )}
         </div>
