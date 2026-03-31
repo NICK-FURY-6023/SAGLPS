@@ -71,7 +71,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         overflow: 'hidden', position: 'relative',
       }}>
         <span style={{
-          transform: 'rotate(-90deg)',
+          transform: 'rotate(-90deg) translateX(0.5mm)',
           whiteSpace: 'nowrap',
           fontSize: s(5.5), fontWeight: 900,
           letterSpacing: '0.06em',
@@ -92,22 +92,22 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
           borderBottom: BT, padding: '0.5mm 1mm',
           minHeight: '8mm', flexShrink: 0,
         }}>
-          {/* Brand Logo */}
+          {/* Brand Logo — large, dark, bold */}
           <div style={{
             flex: '0 0 auto', display: 'flex', alignItems: 'center',
-            maxWidth: '55%', overflow: 'hidden',
+            maxWidth: '60%', overflow: 'hidden',
           }}>
             {logoUrl && !logoError ? (
               <img src={logoUrl} alt={brand} crossOrigin="anonymous"
                 onError={() => setLogoError(true)}
                 style={{
-                  maxHeight: '7mm', maxWidth: '22mm',
+                  maxHeight: '9mm', maxWidth: '28mm',
                   objectFit: 'contain',
-                  filter: 'grayscale(100%) contrast(3) brightness(0.1)',
+                  filter: 'grayscale(100%) contrast(5) brightness(0)',
                 }} />
             ) : (
               <span style={{
-                fontSize: s(9), fontWeight: 900,
+                fontSize: s(11), fontWeight: 900,
                 letterSpacing: '0.12em', textTransform: 'uppercase',
               }}>
                 {brand || (isEmpty ? '' : 'BRAND')}
@@ -115,12 +115,12 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
             )}
           </div>
 
-          {/* QR Code — padded right to avoid print-cutoff */}
+          {/* QR Code — shifted left to avoid print-cutoff */}
           {qrDataUrl && (
             <img src={qrDataUrl} alt="QR" style={{
               width: '7mm', height: '7mm',
               objectFit: 'contain', flexShrink: 0,
-              marginRight: '1.5mm',
+              marginRight: '3mm',
             }} />
           )}
         </div>
@@ -191,15 +191,13 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         {/* Fill remaining space if no description */}
         {!description && product && <div style={{ flex: '1 1 auto' }} />}
 
-        {/* ── FOOTER — Manufacturer + Address ── */}
+        {/* ── FOOTER — Manufacturer + Address (always visible, bold) ── */}
         <div style={{
           flexShrink: 0, padding: '0.4mm 1mm 0.3mm',
           fontSize: s(3.5), lineHeight: 1.3, color: '#000',
           fontWeight: 700, borderTop: BT,
         }}>
-          {brand && (
-            <span style={{ display: 'block' }}>Manufactured by: {brand}</span>
-          )}
+          <span style={{ display: 'block' }}>Manufactured by: {brand || '___________'}</span>
           <span style={{ display: 'block' }}>Address: India</span>
         </div>
 
