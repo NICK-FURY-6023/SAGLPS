@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { generateMfgDate } from '../utils/mfgDate';
+import { dynamicImport } from '../utils/dynamicImport';
 import LabelSheet from './LabelSheet';
 
 const A4_W = 794;
@@ -77,8 +78,8 @@ export default function LabelPreview({
     setPdfLoading(true);
     const tid = toast.loading('Generating PDF…');
     try {
-      const { default: jsPDF } = await import('jspdf');
-      const QRLib = (await import('qrcode')).default;
+      const { default: jsPDF } = await dynamicImport(() => import('jspdf'));
+      const QRLib = (await dynamicImport(() => import('qrcode'))).default;
 
       const pdf = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'portrait', compress: true });
 

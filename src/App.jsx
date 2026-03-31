@@ -4,21 +4,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { lazy, Suspense } from 'react';
+import { dynamicImport } from './utils/dynamicImport';
 
 // Auto-reload on stale chunk (after redeployment, old hashed filenames 404)
 function lazyRetry(importFn) {
-  return lazy(() =>
-    importFn().catch(() => {
-      const reloaded = sessionStorage.getItem('chunk_reload');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload', '1');
-        window.location.reload();
-        return new Promise(() => {}); // never resolves — page is reloading
-      }
-      sessionStorage.removeItem('chunk_reload');
-      return importFn(); // second attempt, throw if still fails
-    })
-  );
+  return lazy(() => dynamicImport(importFn));
 }
 
 const Landing = lazyRetry(() => import('./components/Landing'));
