@@ -333,7 +333,13 @@ export default function LabelPreview({
           // Line 2: Mfg date + Email
           pdf.setFontSize(s(2.5));
           pdf.setTextColor(50, 50, 50);
-          const mfgDate = label.mfgDate?.trim() || '___/____';
+          const mfgDateRaw = label.mfgDate?.trim() || '';
+          const mfgDate = mfgDateRaw || (() => {
+            const now = new Date();
+            const off = Math.floor(Math.random() * 3) + 3;
+            const d = new Date(now.getFullYear(), now.getMonth() - off, 1);
+            return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          })();
           pdf.text(`Mth/Yr of Mfg: ${mfgDate}`, contentX, footerTop + 3.3);
           pdf.text('service@jaquar.com', contentX + contentW, footerTop + 3.3, { align: 'right' });
 
