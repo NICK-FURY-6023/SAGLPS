@@ -231,7 +231,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
 
       </div>
 
-      {/* ── RIGHT VERTICAL STRIP — Model Number (rotated 90°, centered) ── */}
+      {/* ── RIGHT VERTICAL STRIP — Model Number (rotated, centered) ── */}
       <div style={{
         width: '5.5mm', flexShrink: 0, borderLeft: B,
         background: '#fff', color: '#000',
@@ -239,11 +239,10 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         overflow: 'hidden', position: 'relative',
       }}>
         <span style={{
-          transform: 'rotate(90deg)',
+          transform: 'rotate(-90deg)',
           whiteSpace: 'nowrap',
           fontSize: s(5), fontWeight: 900,
           letterSpacing: '0.04em',
-          maxWidth: '42mm', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
