@@ -153,6 +153,9 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
                 <td style={{ borderRight: BT, padding: '0.3mm 0.5mm', fontSize: s(5) }}>{qty || '—'}</td>
                 <td style={{ padding: '0.3mm 0.5mm', fontWeight: 800, fontSize: s(5.5) }}>
                   {price ? `\u20B9${price}` : '—'}
+                  {price && (
+                    <div style={{ fontSize: s(3), fontWeight: 400, marginTop: '0.1mm' }}>(Incl. of All Taxes)</div>
+                  )}
                 </td>
               </tr>
             </tbody>

@@ -255,10 +255,17 @@ export default function LabelPreview({
           const sizeVal = label.size?.trim() || '—';
           const qtyVal = label.qty?.trim() || '—';
           const priceVal = label.price?.trim() ? `\u20B9${label.price.trim()}` : '—';
-          pdf.text(sizeVal, tblX + col1W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
-          pdf.text(qtyVal, tblX + col1W + col2W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
+          pdf.text(sizeVal, tblX + col1W / 2, dataY + TABLE_H / 4, { align: 'center' });
+          pdf.text(qtyVal, tblX + col1W + col2W / 2, dataY + TABLE_H / 4, { align: 'center' });
           pdf.setFont('helvetica', 'bold');
-          pdf.text(priceVal, tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
+          pdf.text(priceVal, tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4, { align: 'center' });
+
+          // "(Incl. of All Taxes)" below the MRP amount
+          if (label.price?.trim()) {
+            pdf.setFontSize(s(2.5));
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('(Incl. of All Taxes)', tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4 + 1.8, { align: 'center' });
+          }
 
           curY += TABLE_H + 0.3;
           pdf.setLineWidth(0.12);
