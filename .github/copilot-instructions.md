@@ -15,24 +15,27 @@ There are no tests or linters configured in this project.
 
 ## Architecture
 
-This is a **React 18 + Vite** frontend with **Vercel Serverless Functions** as the backend, using **Supabase (PostgreSQL)** for storage. It prints product labels on A4 sticker sheets (12 labels per sheet, 2×6 grid, each 105×48mm).
+React 18 + Vite frontend with Vercel Serverless Functions backend. Supabase (PostgreSQL) for persistent storage. Prints product labels on A4 sticker sheets — **multi-page support** with 12 labels per page (2×6 grid, each 105×48mm).
 
 ### Frontend (`src/`)
 
-- **`App.jsx`** — React Router v7 with two routes: `/` (Landing) and `/app` (Dashboard, protected)
-- **`Dashboard.jsx`** — Main orchestrator. Holds all label state, passes it down via props. Split layout: 42% editor / 58% preview.
-- **`LabelEditor.jsx`** — Form for editing 12 labels with Jaquar product search (uses preloaded static JSON from `/public/jaquar-products.json`)
-- **`LabelPreview.jsx`** — A4 preview with print/PDF toolbar and calibration controls
-- **`LabelSheet.jsx`** — Renders the 105×48mm label grid with QR codes and brand logos
+- **`App.jsx`** — React Router v7 with two routes: `/` (Landing) and `/app` (Dashboard, protected). All route components are **code-split** via `React.lazy`.
+- **`Dashboard.jsx`** — Main orchestrator. Holds all label state (multi-page `pages` array), passes it down via props. Split layout: 42% editor / 58% preview. Manages draft auto-save, print history, and CSV import.
+- **`LabelEditor.jsx`** — Form for editing labels with Jaquar product search (client-side search against `/public/jaquar-products.json`, 150ms debounce)
+- **`LabelPreview.jsx`** — A4 preview with print/PDF toolbar and calibration controls. PDF generation is inline here using **native jsPDF vector drawing** (not html2canvas).
+- **`LabelSheet.jsx`** — Renders the 105×48mm label grid. `LabelCell` is wrapped in `React.memo` with a custom comparator to prevent unnecessary re-renders.
 - **`TemplateManager.jsx`** — Modal for cloud template CRUD; falls back to localStorage if Supabase is unavailable
-- **`contexts/AuthContext.jsx`** — JWT auth state (token in localStorage, verified on mount via `/api/auth/verify`)
-- **`services/api.js`** — Axios client with request interceptor that auto-attaches Bearer token from localStorage
+- **`ErrorBoundary.jsx`** — Class component wrapping the entire app. Has a Sentry integration point (`window.Sentry`).
+- **`contexts/AuthContext.jsx`** — JWT auth state. Token stored in **`sessionStorage`** (not localStorage). Client-side JWT expiry check before network verification via `/api/auth/verify`.
+- **`contexts/ThemeContext.jsx`** — Dark/light theme toggle. Persisted in `localStorage` as `ganpati_theme`, applied via `data-theme` attribute on `<html>`.
+- **`services/api.js`** — Axios client with request interceptor that auto-attaches Bearer token from `sessionStorage`
+- **`services/supabase.js`** — Singleton Supabase client for frontend (Realtime WebSocket). Returns `null` if env vars aren't set.
 
 ### Backend (`api/`)
 
 Vercel Serverless Functions. Each file exports a default `(req, res)` handler.
 
-- **`api/_lib/db.js`** — Shared Supabase client singleton with CRUD helpers (`listTemplates`, `createTemplate`, etc.)
+- **`api/_lib/db.js`** — Shared Supabase client singleton (uses `SUPABASE_SERVICE_ROLE_KEY`). CRUD helpers with graceful "table missing" detection.
 - **`api/auth/login.js`** — POST: validates against `ADMIN_EMAIL` + bcrypt-hashed password, returns JWT (7-day expiry)
 - **`api/auth/verify.js`** — GET: validates Bearer token
 - **`api/templates/index.js`** — GET (list) / POST (create) with JWT auth
@@ -44,23 +47,27 @@ Auth middleware is a `verifyToken(req)` helper inlined in each protected endpoin
 ### Data Flow
 
 ```
-Dashboard (labels state)
+Dashboard (pages: array of label arrays, each page = 12 labels)
   → LabelEditor (edits labels via onChange callbacks)
-  → LabelPreview → LabelSheet (renders A4 grid)
+  → LabelPreview → LabelSheet (renders A4 grid per page)
   → TemplateManager (saves/loads label_data to Supabase)
 ```
 
+### PWA
+
+Service worker (`public/sw.js`) and manifest (`public/manifest.json`) registered only in production (`import.meta.env.PROD`). Web Vitals reported via `web-vitals` package in production.
+
 ## Label Data Model
 
-Each label has 7 fields. A sheet is always an array of 12:
+Each label has 7 fields. A page is always an array of 12. Multiple pages are stored as `pages: [[12 labels], [12 labels], ...]`.
 
 ```javascript
 {
   product: '',       // Product name
-  code: '',          // SKU/product code (also used for QR)
+  code: '',          // SKU/product code
   price: '',         // MRP in ₹
   manufacturer: '',  // Brand name
-  logoUrl: '',       // Brand logo URL
+  logoUrl: '',       // Brand logo URL (defaults to /jaquar-logo.png)
   description: '',   // Product description
   productUrl: '',    // URL encoded into QR code
 }
@@ -98,27 +105,31 @@ if (req.method === 'OPTIONS') return res.status(200).end();
 
 ### Styling
 
-- **Tailwind CSS v4** via `@tailwindcss/vite` plugin (no `tailwind.config.js` — uses CSS-first config)
-- Dark theme with saffron accent (`#f97316`). Theme variables are CSS custom properties in `src/index.css`
-- Custom utility classes: `.btn-saffron`, `.btn-ghost`, `.input-dark`, `.glass` (glassmorphism)
-- Print CSS in `src/index.css` under `@media print` — hides everything except `.print-root`
+- **Tailwind CSS v4** via `@tailwindcss/vite` plugin (no `tailwind.config.js` — uses CSS-first config in `src/index.css`)
+- Dark theme with saffron accent (`#f97316`). Theme variables are CSS custom properties in `src/index.css`.
+- Print CSS in `src/index.css` under `@media print` — uses React Portal (`.print-root` as direct child of `<body>`) to avoid CSS conflicts. Hides everything except `.print-root`.
+- Label cell styling is **inline styles only** (not Tailwind) for accurate print/PDF rendering.
 
 ### Print & PDF
 
-- **Browser print**: `window.print()` triggers `@media print` CSS that isolates the label sheet
-- **PDF export**: Clones the sheet off-screen at full A4 size, captures with `html2canvas`, then writes to `jsPDF`. Both libraries are dynamically imported.
-- QR codes are generated via the `qrcode` library and cached in an in-memory LRU map (max 50)
+- **Browser print**: `window.print()` triggers `@media print` CSS. Content rendered via `createPortal` directly under `<body>`.
+- **PDF export**: Native **jsPDF vector drawing** — text, lines, and images drawn directly via jsPDF API. No html2canvas. Produces small files (100–500 KB). `jsPDF` and `qrcode` are dynamically imported.
+- QR codes generated via `qrcode` library and cached in an in-memory LRU map (max 50 entries) in `LabelSheet.jsx`.
+- PDF renders all pages × copies with proper page breaks.
 
-### State Management
+### State & Storage
 
-- No Redux/Zustand — all state is local (`useState`) lifted to `Dashboard.jsx`
-- Auto-save drafts to `localStorage` every 500ms on label change
+- No Redux/Zustand — all state is `useState` lifted to `Dashboard.jsx`
+- **Auth token**: `sessionStorage` (key: `token`)
+- **Draft auto-save**: `localStorage` (key: `ganpati_draft`) every 30s
+- **Print history**: `localStorage` (key: `ganpati_history`)
+- **Theme preference**: `localStorage` (key: `ganpati_theme`)
 - `TemplateManager` gracefully falls back to localStorage when Supabase is unavailable
 
 ### Environment Variables
 
-Server-side (Vercel): `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-Client-side (Vite): `VITE_API_URL` (optional, defaults to relative URLs)
+Server-side (Vercel): `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+Client-side (Vite): `VITE_API_URL` (optional, defaults to relative URLs), `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN` (optional)
 
 ## Database Setup
 
