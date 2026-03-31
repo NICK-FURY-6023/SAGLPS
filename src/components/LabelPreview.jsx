@@ -86,10 +86,13 @@ export default function LabelPreview({
       // Make print-root visible off-screen so images load and elements render
       const origDisplay = printRoot.style.display;
       printRoot.style.display = 'block';
-      printRoot.style.position = 'fixed';
-      printRoot.style.left = '-9999px';
+      printRoot.style.position = 'absolute';
+      printRoot.style.left = '0';
       printRoot.style.top = '0';
+      printRoot.style.width = '210mm';
       printRoot.style.zIndex = '-1';
+      printRoot.style.opacity = '0';
+      printRoot.style.pointerEvents = 'none';
 
       // Wait for all images inside print-root to finish loading
       const imgs = printRoot.querySelectorAll('img');
@@ -114,6 +117,8 @@ export default function LabelPreview({
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
+          windowWidth: sheet.scrollWidth,
+          windowHeight: sheet.scrollHeight,
         });
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -125,7 +130,10 @@ export default function LabelPreview({
       printRoot.style.position = '';
       printRoot.style.left = '';
       printRoot.style.top = '';
+      printRoot.style.width = '';
       printRoot.style.zIndex = '';
+      printRoot.style.opacity = '';
+      printRoot.style.pointerEvents = '';
 
       pdf.save('ganpati-labels.pdf');
       toast.success('PDF downloaded!', { id: tid });
@@ -137,7 +145,10 @@ export default function LabelPreview({
         pr.style.position = '';
         pr.style.left = '';
         pr.style.top = '';
+        pr.style.width = '';
         pr.style.zIndex = '';
+        pr.style.opacity = '';
+        pr.style.pointerEvents = '';
       }
       toast.error(`PDF generation failed: ${err?.message || 'Unknown error'}. Try Ctrl+P → Save as PDF.`, { id: tid });
     } finally {
