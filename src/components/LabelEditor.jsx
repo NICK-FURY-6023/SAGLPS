@@ -166,8 +166,15 @@ function JaquarSearchDropdown({ results, loading, liveLoading, onSelect, visible
   );
 }
 
+function generateMfgDate() {
+  const now = new Date();
+  const offset = Math.floor(Math.random() * 3) + 3;
+  const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 const emptyLabel = () => ({
-  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: '',
+  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: generateMfgDate(),
 });
 const isFilled   = (l) => !!(l.product?.trim() || l.code?.trim() || l.price?.trim());
 

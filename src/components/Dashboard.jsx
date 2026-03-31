@@ -9,8 +9,15 @@ import LabelEditor from './LabelEditor';
 import LabelPreview from './LabelPreview';
 import TemplateManager from './TemplateManager';
 
+function generateMfgDate() {
+  const now = new Date();
+  const offset = Math.floor(Math.random() * 3) + 3;
+  const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 const emptyLabel = () => ({
-  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: '',
+  product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: generateMfgDate(),
 });
 const initialLabels = () => Array.from({ length: 12 }, emptyLabel);
 const DRAFT_KEY   = 'ganpati_draft';
@@ -503,12 +510,20 @@ export default function Dashboard() {
         // New format: { pages: [[...], [...]] }
         if (parsed.pages && Array.isArray(parsed.pages) && parsed.pages.length) {
           return parsed.pages.map(page =>
-            Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+            Array.from({ length: 12 }, (_, i) => {
+              const l = { ...emptyLabel(), ...(page[i] || {}) };
+              if (!l.mfgDate) l.mfgDate = generateMfgDate();
+              return l;
+            })
           );
         }
         // Old format: flat array of 12
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(parsed[i] || {}) }))];
+          return [Array.from({ length: 12 }, (_, i) => {
+            const l = { ...emptyLabel(), ...(parsed[i] || {}) };
+            if (!l.mfgDate) l.mfgDate = generateMfgDate();
+            return l;
+          })];
         }
       }
     } catch { /* ignore */ }

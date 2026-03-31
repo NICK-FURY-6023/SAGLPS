@@ -274,8 +274,18 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
 // Bug #4 fix: proper default label so .trim() never hits undefined
 const defaultLabel = { product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: '' };
 
+function ensureMfgDate(label) {
+  if (!label.mfgDate) {
+    const now = new Date();
+    const offset = Math.floor(Math.random() * 3) + 3;
+    const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    label.mfgDate = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  }
+  return label;
+}
+
 export default function LabelSheet({ labels, extraTopMargin = 0, fontScale = 1, fieldStyles }) {
-  const safeLabels = Array.from({ length: 12 }, (_, i) => ({ ...defaultLabel, ...(labels[i] || {}) }));
+  const safeLabels = Array.from({ length: 12 }, (_, i) => ensureMfgDate({ ...defaultLabel, ...(labels[i] || {}) }));
   return (
     <div
       className="sheet print-sheet"
