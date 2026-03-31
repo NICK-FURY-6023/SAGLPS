@@ -1,15 +1,15 @@
 /*
  * Hardware product label — 105mm × 48mm (Jaquar-type packaging sticker)
  * ┌───┬──────────────────────────────────────────┐
- * │   │ [BRAND LOGO]              [QR CODE]      │
+ * │   │ [LOGO]                      [QR]         │
  * │ M │──────────────────────────────────────────│
- * │ O │ │  Size  │  Qty  │  MRP (Per Piece)  │  │
- * │ D │ │  15mm  │   1   │     ₹3,800.00     │  │
+ * │ O │ │ Size │ Qty │ MRP (Per Piece) │        │
+ * │ D │ │ 15mm │  1  │   ₹3,800.00    │        │
  * │ E │──────────────────────────────────────────│
- * │ L │ CONCEALED BODY FOR SINGLE LEVER HIGH     │
- * │   │ FLOW DIVERTER WITH BUTTON ASSEMBLY...    │
+ * │ L │ Product Name (bold)                      │
+ * │   │ CONCEALED BODY FOR SINGLE LEVER HIGH...  │
  * │   │──────────────────────────────────────────│
- * │   │ Mfg by: Company  |  Address: India       │
+ * │   │ Mfg by: Company | Address: India         │
  * └───┴──────────────────────────────────────────┘
  */
 
@@ -47,8 +47,8 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
   const productUrl = label.productUrl?.trim() || '';
   const qrDataUrl = useQRCode(productUrl);
   const s = (pt) => `${pt * fontScale}pt`;
-  const B = '0.2mm solid #000';
-  const BT = '0.15mm solid #000';
+  const B = '0.18mm solid #000';
+  const BT = '0.12mm solid #000';
   const [logoError, setLogoError] = useState(false);
 
   const isEmpty = !code && !product && !price && !description;
@@ -65,7 +65,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
 
       {/* ── LEFT VERTICAL STRIP — Model Number (rotated 90°) ── */}
       <div style={{
-        width: '7mm', flexShrink: 0, borderRight: B,
+        width: '5.5mm', flexShrink: 0, borderRight: B,
         background: '#000', color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden', position: 'relative',
@@ -73,8 +73,8 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         <span style={{
           transform: 'rotate(-90deg)',
           whiteSpace: 'nowrap',
-          fontSize: s(7), fontWeight: 900,
-          letterSpacing: '0.08em',
+          fontSize: s(5.5), fontWeight: 900,
+          letterSpacing: '0.06em',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
@@ -89,8 +89,8 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         {/* ── TOP ROW: Brand Logo (left) + QR Code (right) ── */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: BT, padding: '1mm 1.5mm',
-          minHeight: '11mm', flexShrink: 0,
+          borderBottom: BT, padding: '0.5mm 1mm',
+          minHeight: '8mm', flexShrink: 0,
         }}>
           {/* Brand Logo */}
           <div style={{
@@ -101,14 +101,14 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
               <img src={logoUrl} alt={brand} crossOrigin="anonymous"
                 onError={() => setLogoError(true)}
                 style={{
-                  maxHeight: '9mm', maxWidth: '26mm',
+                  maxHeight: '7mm', maxWidth: '22mm',
                   objectFit: 'contain',
                   filter: 'grayscale(100%) contrast(1.5)',
                 }} />
             ) : (
               <span style={{
-                fontSize: s(12), fontWeight: 900,
-                letterSpacing: '0.15em', textTransform: 'uppercase',
+                fontSize: s(9), fontWeight: 900,
+                letterSpacing: '0.12em', textTransform: 'uppercase',
               }}>
                 {brand || (isEmpty ? '' : 'BRAND')}
               </span>
@@ -117,39 +117,34 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
 
           {/* QR Code */}
           {qrDataUrl && (
-            <div style={{
-              flex: '0 0 auto', display: 'flex', alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <img src={qrDataUrl} alt="QR" style={{
-                width: '9mm', height: '9mm',
-                objectFit: 'contain',
-              }} />
-            </div>
+            <img src={qrDataUrl} alt="QR" style={{
+              width: '7mm', height: '7mm',
+              objectFit: 'contain', flexShrink: 0,
+            }} />
           )}
         </div>
 
         {/* ── MIDDLE: Size / Qty / MRP Table ── */}
         <div style={{
           borderBottom: BT, flexShrink: 0,
-          padding: '0.5mm 1.5mm',
+          padding: '0.3mm 1mm',
         }}>
           <table style={{
             width: '100%', borderCollapse: 'collapse',
-            fontSize: s(6), textAlign: 'center',
+            textAlign: 'center',
           }}>
             <thead>
               <tr>
-                <th style={{ borderBottom: BT, borderRight: BT, padding: '0.5mm 1mm', fontWeight: 900, fontSize: s(5.5) }}>Size</th>
-                <th style={{ borderBottom: BT, borderRight: BT, padding: '0.5mm 1mm', fontWeight: 900, fontSize: s(5.5) }}>Qty</th>
-                <th style={{ borderBottom: BT, padding: '0.5mm 1mm', fontWeight: 900, fontSize: s(5.5) }}>MRP (Per Piece)</th>
+                <th style={{ borderBottom: BT, borderRight: BT, padding: '0.3mm 0.5mm', fontWeight: 900, fontSize: s(4.5) }}>Size</th>
+                <th style={{ borderBottom: BT, borderRight: BT, padding: '0.3mm 0.5mm', fontWeight: 900, fontSize: s(4.5) }}>Qty</th>
+                <th style={{ borderBottom: BT, padding: '0.3mm 0.5mm', fontWeight: 900, fontSize: s(4.5) }}>MRP (Per Piece)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ borderRight: BT, padding: '0.5mm 1mm', fontSize: s(6) }}>{size || '—'}</td>
-                <td style={{ borderRight: BT, padding: '0.5mm 1mm', fontSize: s(6) }}>{qty || '—'}</td>
-                <td style={{ padding: '0.5mm 1mm', fontWeight: 800, fontSize: s(6.5) }}>
+                <td style={{ borderRight: BT, padding: '0.3mm 0.5mm', fontSize: s(5) }}>{size || '—'}</td>
+                <td style={{ borderRight: BT, padding: '0.3mm 0.5mm', fontSize: s(5) }}>{qty || '—'}</td>
+                <td style={{ padding: '0.3mm 0.5mm', fontWeight: 800, fontSize: s(5.5) }}>
                   {price ? `\u20B9${price}` : '—'}
                 </td>
               </tr>
@@ -157,32 +152,53 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
           </table>
         </div>
 
-        {/* ── PRODUCT DESCRIPTION — Center, ALL CAPS ── */}
-        <div style={{
-          flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderBottom: BT, padding: '0.5mm 2mm',
-          overflow: 'hidden', textAlign: 'center',
-        }}>
-          <span style={{
-            fontSize: s(5), fontWeight: 700,
-            lineHeight: 1.3, textTransform: 'uppercase',
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
-            overflow: 'hidden', wordBreak: 'break-word',
+        {/* ── PRODUCT NAME — Bold, centered ── */}
+        {product && (
+          <div style={{
+            flexShrink: 0, borderBottom: BT,
+            padding: '0.3mm 1.5mm', textAlign: 'center',
           }}>
-            {description || product || ''}
-          </span>
-        </div>
+            <span style={{
+              fontSize: s(5), fontWeight: 900,
+              textTransform: 'uppercase', lineHeight: 1.2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              display: 'block',
+            }}>
+              {product}
+            </span>
+          </div>
+        )}
+
+        {/* ── PRODUCT DESCRIPTION — Center, ALL CAPS, smaller ── */}
+        {(description || (!product && !isEmpty)) && (
+          <div style={{
+            flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderBottom: BT, padding: '0.3mm 1.5mm',
+            overflow: 'hidden', textAlign: 'center',
+          }}>
+            <span style={{
+              fontSize: s(4), fontWeight: 600,
+              lineHeight: 1.25, textTransform: 'uppercase',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden', wordBreak: 'break-word',
+            }}>
+              {description || ''}
+            </span>
+          </div>
+        )}
+
+        {/* Fill remaining space if no description */}
+        {!description && product && <div style={{ flex: '1 1 auto' }} />}
 
         {/* ── FOOTER — Manufacturer + Address ── */}
         <div style={{
-          flexShrink: 0, padding: '0.5mm 1.5mm',
-          fontSize: s(3.8), lineHeight: 1.3, color: '#000',
-          display: 'flex', flexDirection: 'column', gap: '0.2mm',
+          flexShrink: 0, padding: '0.3mm 1mm',
+          fontSize: s(3.2), lineHeight: 1.2, color: '#000',
         }}>
           {brand && (
-            <span><strong>Manufactured by:</strong> {brand}</span>
+            <span style={{ display: 'block' }}><strong>Mfg by:</strong> {brand}</span>
           )}
-          <span><strong>Address:</strong> India</span>
+          <span style={{ display: 'block' }}><strong>Address:</strong> India</span>
         </div>
 
       </div>

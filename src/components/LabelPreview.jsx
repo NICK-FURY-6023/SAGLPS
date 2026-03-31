@@ -150,11 +150,11 @@ export default function LabelPreview({
 
           // Cell border
           pdf.setDrawColor(0, 0, 0);
-          pdf.setLineWidth(0.2);
+          pdf.setLineWidth(0.18);
           pdf.rect(cx, cy, CW, CH);
 
           // ── LEFT VERTICAL STRIP — black with white rotated model number ──
-          const STRIP_W = 7;
+          const STRIP_W = 5.5;
           pdf.setFillColor(0, 0, 0);
           pdf.rect(cx, cy, STRIP_W, CH, 'F');
           pdf.line(cx + STRIP_W, cy, cx + STRIP_W, cy + CH);
@@ -162,24 +162,24 @@ export default function LabelPreview({
           const code = label.code?.trim() || '';
           if (code) {
             pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(s(7));
+            pdf.setFontSize(s(5.5));
             pdf.setFont('helvetica', 'bold');
             pdf.text(code, cx + STRIP_W / 2, cy + CH / 2, { angle: 90, align: 'center' });
             pdf.setTextColor(0, 0, 0);
           }
 
           // Content area after the strip
-          const contentX = cx + STRIP_W + 1;
-          const contentW = CW - STRIP_W - 2;
-          let curY = cy + 1;
+          const contentX = cx + STRIP_W + 0.8;
+          const contentW = CW - STRIP_W - 1.5;
+          let curY = cy + 0.5;
 
           // ── TOP ROW: Brand Logo (left) + QR Code (right) ──
-          const TOP_H = 10;
+          const TOP_H = 8;
           const logoUrl = label.logoUrl?.trim() || '/jaquar-logo.png';
           const logo = logoCache[logoUrl];
           if (logo) {
-            const pad = 1;
-            const fit = fitImg(logo, 22, TOP_H - pad * 2);
+            const pad = 0.5;
+            const fit = fitImg(logo, 18, TOP_H - pad * 2);
             try {
               pdf.addImage(logo.data, 'PNG',
                 contentX, curY + (TOP_H - fit.h) / 2, fit.w, fit.h);
@@ -187,9 +187,9 @@ export default function LabelPreview({
           } else {
             const brand = label.manufacturer?.trim();
             if (brand) {
-              pdf.setFontSize(s(10));
+              pdf.setFontSize(s(8));
               pdf.setFont('helvetica', 'bold');
-              pdf.text(brand.toUpperCase(), contentX + 1, curY + TOP_H / 2 + 1);
+              pdf.text(brand.toUpperCase(), contentX + 0.5, curY + TOP_H / 2 + 0.8);
             }
           }
 
@@ -197,21 +197,20 @@ export default function LabelPreview({
           const pUrl = label.productUrl?.trim();
           const qrData = pUrl ? qrCache[pUrl] : null;
           if (qrData) {
-            const qrSize = TOP_H - 2;
+            const qrSize = TOP_H - 1.5;
             try {
               pdf.addImage(qrData, 'PNG',
-                contentX + contentW - qrSize, curY + 1, qrSize, qrSize);
+                contentX + contentW - qrSize, curY + 0.5, qrSize, qrSize);
             } catch { /* skip */ }
           }
 
           curY += TOP_H;
-          // Separator line
-          pdf.setLineWidth(0.15);
-          pdf.line(contentX - 1, curY, cx + CW, curY);
-          curY += 0.5;
+          pdf.setLineWidth(0.12);
+          pdf.line(cx + STRIP_W, curY, cx + CW, curY);
+          curY += 0.3;
 
           // ── TABLE: Size | Qty | MRP ──
-          const TABLE_H = 7;
+          const TABLE_H = 5.5;
           const tblX = contentX;
           const tblW = contentW;
           const col1W = tblW * 0.28, col2W = tblW * 0.22, col3W = tblW * 0.50;
@@ -220,63 +219,75 @@ export default function LabelPreview({
           pdf.setFillColor(0, 0, 0);
           pdf.rect(tblX, curY, tblW, TABLE_H / 2, 'F');
           pdf.setTextColor(255, 255, 255);
-          pdf.setFontSize(s(5));
+          pdf.setFontSize(s(4));
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Size', tblX + col1W / 2, curY + TABLE_H / 4 + 0.5, { align: 'center' });
-          pdf.text('Qty', tblX + col1W + col2W / 2, curY + TABLE_H / 4 + 0.5, { align: 'center' });
-          pdf.text('MRP (Per Piece)', tblX + col1W + col2W + col3W / 2, curY + TABLE_H / 4 + 0.5, { align: 'center' });
+          pdf.text('Size', tblX + col1W / 2, curY + TABLE_H / 4 + 0.3, { align: 'center' });
+          pdf.text('Qty', tblX + col1W + col2W / 2, curY + TABLE_H / 4 + 0.3, { align: 'center' });
+          pdf.text('MRP (Per Piece)', tblX + col1W + col2W + col3W / 2, curY + TABLE_H / 4 + 0.3, { align: 'center' });
           pdf.setTextColor(0, 0, 0);
 
           // Data row
           const dataY = curY + TABLE_H / 2;
           pdf.setDrawColor(0);
-          pdf.setLineWidth(0.15);
+          pdf.setLineWidth(0.12);
           pdf.rect(tblX, dataY, tblW, TABLE_H / 2);
           pdf.line(tblX + col1W, dataY, tblX + col1W, dataY + TABLE_H / 2);
           pdf.line(tblX + col1W + col2W, dataY, tblX + col1W + col2W, dataY + TABLE_H / 2);
 
-          pdf.setFontSize(s(5.5));
+          pdf.setFontSize(s(4.5));
           pdf.setFont('helvetica', 'normal');
           const sizeVal = label.size?.trim() || '—';
           const qtyVal = label.qty?.trim() || '—';
           const priceVal = label.price?.trim() ? `\u20B9${label.price.trim()}` : '—';
-          pdf.text(sizeVal, tblX + col1W / 2, dataY + TABLE_H / 4 + 0.5, { align: 'center' });
-          pdf.text(qtyVal, tblX + col1W + col2W / 2, dataY + TABLE_H / 4 + 0.5, { align: 'center' });
+          pdf.text(sizeVal, tblX + col1W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
+          pdf.text(qtyVal, tblX + col1W + col2W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
           pdf.setFont('helvetica', 'bold');
-          pdf.text(priceVal, tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4 + 0.5, { align: 'center' });
+          pdf.text(priceVal, tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4 + 0.3, { align: 'center' });
 
-          curY += TABLE_H + 0.5;
-          pdf.setLineWidth(0.15);
-          pdf.line(contentX - 1, curY, cx + CW, curY);
-          curY += 0.5;
+          curY += TABLE_H + 0.3;
+          pdf.setLineWidth(0.12);
+          pdf.line(cx + STRIP_W, curY, cx + CW, curY);
+          curY += 0.3;
 
-          // ── PRODUCT DESCRIPTION — centered, ALL CAPS ──
-          const desc = label.description?.trim() || label.product?.trim() || '';
-          if (desc) {
+          // ── PRODUCT NAME — bold, centered ──
+          const productName = label.product?.trim() || '';
+          if (productName) {
             pdf.setFontSize(s(4.5));
             pdf.setFont('helvetica', 'bold');
-            const descLines = pdf.splitTextToSize(desc.toUpperCase(), contentW - 2);
-            const maxLines = 3;
-            const lines = descLines.slice(0, maxLines);
-            const lineH = s(4.5) * PT2MM * 1.3;
-            const descBlockH = lines.length * lineH;
-            const availH = (cy + CH) - curY - 5;
-            const descY = curY + Math.max(0, (availH - descBlockH) / 2);
-            pdf.text(lines, contentX + contentW / 2, descY, { align: 'center', lineHeightFactor: 1.3 });
-            curY += Math.max(descBlockH, availH) + 0.5;
+            const nameText = productName.toUpperCase();
+            const truncated = pdf.splitTextToSize(nameText, contentW - 2)[0] || nameText;
+            pdf.text(truncated, contentX + contentW / 2, curY + 1.8, { align: 'center' });
+            curY += 3;
+            pdf.setLineWidth(0.1);
+            pdf.line(cx + STRIP_W, curY, cx + CW, curY);
+            curY += 0.3;
           }
 
-          // ── FOOTER — Manufacturer + Address ──
-          const footerY = cy + CH - 3.5;
+          // ── PRODUCT DESCRIPTION — centered, ALL CAPS, smaller ──
+          const desc = label.description?.trim() || '';
+          if (desc) {
+            pdf.setFontSize(s(3.5));
+            pdf.setFont('helvetica', 'bold');
+            const descLines = pdf.splitTextToSize(desc.toUpperCase(), contentW - 2).slice(0, 2);
+            const lineH = s(3.5) * PT2MM * 1.25;
+            const descBlockH = descLines.length * lineH;
+            const availH = (cy + CH) - curY - 4;
+            const descY = curY + Math.max(0, (availH - descBlockH) / 2);
+            pdf.text(descLines, contentX + contentW / 2, descY, { align: 'center', lineHeightFactor: 1.25 });
+            curY += Math.max(descBlockH, availH) + 0.3;
+          }
+
+          // ── FOOTER — Mfg by + Address ──
+          const footerY = cy + CH - 3;
           pdf.setLineWidth(0.1);
-          pdf.line(contentX - 1, footerY - 0.5, cx + CW, footerY - 0.5);
-          pdf.setFontSize(s(3.5));
+          pdf.line(cx + STRIP_W, footerY - 0.3, cx + CW, footerY - 0.3);
+          pdf.setFontSize(s(3));
           pdf.setFont('helvetica', 'normal');
           const brand = label.manufacturer?.trim();
           if (brand) {
-            pdf.text(`Manufactured by: ${brand}`, contentX, footerY + 1);
+            pdf.text(`Mfg by: ${brand}`, contentX, footerY + 0.8);
           }
-          pdf.text('Address: India', contentX, footerY + 3);
+          pdf.text('Address: India', contentX, footerY + 2.3);
         }
         } // end pageIdx loop
       }
