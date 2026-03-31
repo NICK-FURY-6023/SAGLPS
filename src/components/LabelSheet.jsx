@@ -66,7 +66,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
     }}>
 
-      {/* ── LEFT VERTICAL STRIP — Model Number (rotated 90°) ── */}
+      {/* ── LEFT VERTICAL STRIP — Model Number (rotated 90°, centered) ── */}
       <div style={{
         width: '5.5mm', flexShrink: 0, borderRight: B,
         background: '#000', color: '#fff',
@@ -74,10 +74,10 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         overflow: 'hidden', position: 'relative',
       }}>
         <span style={{
-          transform: 'rotate(-90deg) translateX(0.5mm)',
+          transform: 'rotate(-90deg)',
           whiteSpace: 'nowrap',
-          fontSize: s(5.5), fontWeight: 900,
-          letterSpacing: '0.06em',
+          fontSize: s(5), fontWeight: 900,
+          letterSpacing: '0.04em',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
@@ -207,11 +207,11 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
           )}
         </div>
 
-        {/* ── FOOTER — Company name + Made in India ── */}
+        {/* ── FOOTER — Company name + Made in India (normal weight) ── */}
         <div style={{
           flexShrink: 0, padding: '0.4mm 1mm 0.3mm',
           fontSize: s(3.5), lineHeight: 1.3, color: '#000',
-          fontWeight: 700, borderTop: BT,
+          fontWeight: 400, borderTop: BT,
           display: 'flex', justifyContent: 'space-between',
         }}>
           <span>Jaquar & Co. Pvt. Ltd.</span>

@@ -167,7 +167,7 @@ export default function LabelPreview({
           const code = label.code?.trim() || '';
           if (code) {
             pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(s(5.5));
+            pdf.setFontSize(s(5));
             pdf.setFont('helvetica', 'bold');
             pdf.text(code, cx + STRIP_W / 2, cy + CH / 2, { angle: 90, align: 'center' });
             pdf.setTextColor(0, 0, 0);
@@ -298,11 +298,11 @@ export default function LabelPreview({
             pdf.text(descLines, contentX + 0.5, textY + 1, { lineHeightFactor: 1.25 });
           }
 
-          // ── FOOTER — Jaquar & Co. Pvt. Ltd. + Made in India ──
+          // ── FOOTER — Jaquar & Co. Pvt. Ltd. + Made in India (normal weight) ──
           pdf.setLineWidth(0.1);
           pdf.line(cx + STRIP_W, footerY - 0.3, cx + CW, footerY - 0.3);
           pdf.setFontSize(s(3.2));
-          pdf.setFont('helvetica', 'bold');
+          pdf.setFont('helvetica', 'normal');
           pdf.text('Jaquar & Co. Pvt. Ltd.', contentX, footerY + 0.8);
           pdf.text('Made in India', contentX + contentW, footerY + 0.8, { align: 'right' });
         }
