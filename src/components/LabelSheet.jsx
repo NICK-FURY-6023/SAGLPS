@@ -18,6 +18,9 @@ import { useState, useEffect, memo } from 'react';
 import QRCode from 'qrcode';
 import { generateMfgDate } from '../utils/mfgDate';
 
+const LABEL_FONT_FAMILY = 'Arial, Helvetica, sans-serif';
+const MM_TO_PX = 96 / 25.4;
+
 // Generate QR code data URL (LRU cache — max 50 entries)
 const qrCache = new Map();
 const QR_CACHE_MAX = 50;
@@ -37,17 +40,46 @@ function useQRCode(url) {
   return dataUrl;
 }
 
-function buildTextLines(text, maxCharsPerLine, maxLines) {
+function getTextMeasureContext() {
+  if (typeof document === 'undefined') return null;
+  if (!getTextMeasureContext.canvas) {
+    getTextMeasureContext.canvas = document.createElement('canvas');
+  }
+  return getTextMeasureContext.canvas.getContext('2d');
+}
+
+function measureTextWidth(text, fontSizePt, fontWeight) {
+  const ctx = getTextMeasureContext();
+  if (!ctx) return text.length * fontSizePt * 0.55;
+  const fontSizePx = fontSizePt * (96 / 72);
+  ctx.font = `${fontWeight} ${fontSizePx}px ${LABEL_FONT_FAMILY}`;
+  return ctx.measureText(text).width;
+}
+
+function ellipsizeToWidth(text, maxWidthPx, fontSizePt, fontWeight) {
+  const normalized = (text || '').trim();
+  if (!normalized) return '';
+  if (measureTextWidth(normalized, fontSizePt, fontWeight) <= maxWidthPx) return normalized;
+
+  let output = normalized;
+  while (output.length > 1 && measureTextWidth(`${output}...`, fontSizePt, fontWeight) > maxWidthPx) {
+    output = output.slice(0, -1).trimEnd();
+  }
+  return `${output}...`;
+}
+
+function buildTextLines(text, { fontSizePt, fontWeight, maxWidthMm, maxLines }) {
   const normalized = (text || '').replace(/\s+/g, ' ').trim();
   if (!normalized) return [];
 
+  const maxWidthPx = maxWidthMm * MM_TO_PX;
   const words = normalized.split(' ');
   const lines = [];
   let currentLine = '';
 
   for (const word of words) {
     const candidate = currentLine ? `${currentLine} ${word}` : word;
-    if (candidate.length <= maxCharsPerLine) {
+    if (measureTextWidth(candidate, fontSizePt, fontWeight) <= maxWidthPx) {
       currentLine = candidate;
       continue;
     }
@@ -56,15 +88,22 @@ function buildTextLines(text, maxCharsPerLine, maxLines) {
 
     if (lines.length === maxLines) break;
 
-    if (word.length <= maxCharsPerLine) {
+    if (measureTextWidth(word, fontSizePt, fontWeight) <= maxWidthPx) {
       currentLine = word;
       continue;
     }
 
     let remaining = word;
-    while (remaining.length > maxCharsPerLine && lines.length < maxLines) {
-      lines.push(remaining.slice(0, maxCharsPerLine - 1));
-      remaining = remaining.slice(maxCharsPerLine - 1);
+    while (remaining && lines.length < maxLines) {
+      let part = '';
+      for (const char of remaining) {
+        const nextPart = `${part}${char}`;
+        if (measureTextWidth(nextPart, fontSizePt, fontWeight) > maxWidthPx) break;
+        part = nextPart;
+      }
+      if (!part) break;
+      lines.push(part);
+      remaining = remaining.slice(part.length);
     }
     currentLine = remaining;
   }
@@ -73,11 +112,10 @@ function buildTextLines(text, maxCharsPerLine, maxLines) {
     lines.push(currentLine);
   }
 
-  const consumedLength = lines.join(' ').length;
-  const wasTrimmed = consumedLength < normalized.length;
-  if (wasTrimmed && lines.length) {
+  const renderedText = lines.join(' ').trim();
+  if (renderedText.length < normalized.length && lines.length) {
     const lastIndex = lines.length - 1;
-    lines[lastIndex] = `${lines[lastIndex].replace(/[.\s]+$/g, '')}...`;
+    lines[lastIndex] = ellipsizeToWidth(lines[lastIndex], maxWidthPx, fontSizePt, fontWeight);
   }
 
   return lines.slice(0, maxLines);
@@ -107,14 +145,24 @@ const LabelCell = memo(function LabelCell({ label }) {
 
   const isEmpty = !code && !product && !price && !description;
   const hasProductImg = productImage && !imgError;
-  const productLines = buildTextLines(product, hasProductImg ? 34 : 42, 2);
-  const descriptionLines = buildTextLines(description, hasProductImg ? 42 : 52, productLines.length === 2 ? 2 : 3);
+  const productLines = buildTextLines(product, {
+    fontSizePt: 4.5,
+    fontWeight: 900,
+    maxWidthMm: hasProductImg ? 73 : 84,
+    maxLines: 2,
+  });
+  const descriptionLines = buildTextLines(description, {
+    fontSizePt: 3.5,
+    fontWeight: 600,
+    maxWidthMm: hasProductImg ? 76 : 88,
+    maxLines: 3,
+  });
 
   return (
     <div style={{
       width: '100%', height: '100%',
       border: B, boxSizing: 'border-box',
-      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontFamily: LABEL_FONT_FAMILY,
       color: '#000', display: 'flex',
       overflow: 'hidden', background: '#fff',
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
@@ -136,21 +184,19 @@ const LabelCell = memo(function LabelCell({ label }) {
         </span>
       </div>
 
-      {/* ── MAIN CONTENT — CSS Grid with explicit row heights ── */}
+      {/* ── MAIN CONTENT — Flexbox column (html2canvas lacks grid-template support) ── */}
       <div style={{
         flex: '1 1 auto',
-        display: 'grid',
-        gridTemplateRows: '8.5mm auto 1fr 7mm',
+        display: 'flex', flexDirection: 'column',
         minWidth: 0,
-        overflow: 'hidden',
       }}>
 
-        {/* ROW 1: Brand Logo + QR Code ── */}
+        {/* ROW 1: Brand Logo + QR Code — fixed 8.5mm ── */}
         <div style={{
+          flex: '0 0 8.5mm',
           display: 'flex', alignItems: 'center',
           padding: '0.5mm 1.2mm',
           gap: '1.5mm',
-          overflow: 'hidden',
         }}>
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             {logoUrl && !logoError ? (
@@ -178,11 +224,11 @@ const LabelCell = memo(function LabelCell({ label }) {
           )}
         </div>
 
-        {/* ROW 2: Size / Qty / MRP Table ── */}
+        {/* ROW 2: Size / Qty / MRP Table — auto height ── */}
         <div style={{
+          flex: '0 0 auto',
           borderTop: BD,
           padding: '0.3mm 1mm',
-          overflow: 'hidden',
         }}>
           <table style={{
             width: '100%', borderCollapse: 'collapse',
@@ -197,9 +243,9 @@ const LabelCell = memo(function LabelCell({ label }) {
             </thead>
             <tbody>
               <tr>
-                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{size || '—'}</td>
-                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qty || '—'}</td>
-                <td style={{ padding: '0.5mm 0.8mm', fontWeight: 800, fontSize: s(5), verticalAlign: 'middle', lineHeight: 1.15, overflow: 'hidden' }}>
+                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{size || '—'}</td>
+                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{qty || '—'}</td>
+                <td style={{ padding: '0.5mm 0.8mm', fontWeight: 800, fontSize: s(5), verticalAlign: 'middle', lineHeight: 1.15 }}>
                   {price ? `\u20B9${price.replace(/^[\s₹Rs.]+/i, '').trim()}` : '—'}
                   {price && (
                     <div style={{ fontSize: s(2.6), fontWeight: 400, marginTop: '0.2mm', lineHeight: 1 }}>(Incl. of All Taxes)</div>
@@ -210,26 +256,25 @@ const LabelCell = memo(function LabelCell({ label }) {
           </table>
         </div>
 
-        {/* ROW 3: Product Name + Description + Image (1fr — takes remaining space) ── */}
+        {/* ROW 3: Product Name + Description + Image — fills remaining space ── */}
         <div style={{
+          flex: '1 1 auto',
           borderTop: BD,
           display: 'flex',
-          overflow: 'hidden',
         }}>
           {/* Text content */}
           <div style={{
             flex: '1 1 auto', display: 'flex', flexDirection: 'column',
-            justifyContent: 'flex-start', padding: '1.1mm 1.5mm 0.8mm',
-            minWidth: 0, overflow: 'hidden',
+            justifyContent: 'flex-start', padding: '1.6mm 1.8mm 1mm',
+            minWidth: 0,
           }}>
             {productLines.length > 0 && (
               <div style={{
                 fontSize: s(4.5), fontWeight: 900,
-                textTransform: 'uppercase', lineHeight: 1.22,
-                overflow: 'hidden',
+                textTransform: 'uppercase', lineHeight: 1.28,
               }}>
                 {productLines.map((line, index) => (
-                  <div key={`product-${index}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <div key={`product-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
                     {line}
                   </div>
                 ))}
@@ -238,12 +283,11 @@ const LabelCell = memo(function LabelCell({ label }) {
             {(descriptionLines.length > 0 || (!product && !isEmpty)) && (
               <div style={{
                 fontSize: s(3.5), fontWeight: 600,
-                lineHeight: 1.18, textTransform: 'uppercase',
-                overflow: 'hidden',
-                marginTop: productLines.length > 0 ? '0.5mm' : 0,
+                lineHeight: 1.25, textTransform: 'uppercase',
+                marginTop: productLines.length > 0 ? '0.8mm' : 0,
               }}>
                 {descriptionLines.map((line, index) => (
-                  <div key={`description-${index}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <div key={`description-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
                     {line}
                   </div>
                 ))}
@@ -256,7 +300,7 @@ const LabelCell = memo(function LabelCell({ label }) {
             <div style={{
               flex: '0 0 11mm', display: 'flex', alignItems: 'center',
               justifyContent: 'center', padding: '0.8mm',
-              borderLeft: BD, overflow: 'hidden',
+              borderLeft: BD,
             }}>
               <img src={productImageSrc} alt="Product"
                 onError={() => setImgError(true)}
@@ -268,14 +312,14 @@ const LabelCell = memo(function LabelCell({ label }) {
           )}
         </div>
 
-        {/* ROW 4: Footer — Company info (fixed 7mm) ── */}
+        {/* ROW 4: Footer — fixed 7mm ── */}
         <div style={{
+          flex: '0 0 7mm',
           borderTop: BD,
           padding: '0.6mm 1.2mm',
           fontSize: s(3.2), lineHeight: 1.3, color: '#000',
           fontWeight: 400,
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          overflow: 'hidden',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Jaquar & Co. Pvt. Ltd.</span>
