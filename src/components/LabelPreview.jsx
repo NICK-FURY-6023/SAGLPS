@@ -401,7 +401,7 @@ export default function LabelPreview({
         <ToolBtn onClick={async () => {
           const tid = toast.loading('Generating PNG…');
           try {
-            const { default: html2canvas } = await import('html2canvas');
+            const { default: html2canvas } = await dynamicImport(() => import('html2canvas'));
             const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
             if (!sheet) throw new Error('Preview not found');
             const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -420,7 +420,7 @@ export default function LabelPreview({
         <ToolBtn onClick={async () => {
           const tid = toast.loading('Generating SVG…');
           try {
-            const { default: html2canvas } = await import('html2canvas');
+            const { default: html2canvas } = await dynamicImport(() => import('html2canvas'));
             const sheet = containerRef.current?.querySelector('.print-scale-wrapper');
             if (!sheet) throw new Error('Preview not found');
             const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
