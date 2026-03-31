@@ -85,6 +85,7 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
           whiteSpace: 'nowrap',
           fontSize: s(5), fontWeight: 900,
           letterSpacing: '0.04em',
+          maxWidth: '42mm', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
@@ -168,20 +169,20 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
         {/* ── PRODUCT NAME + DESCRIPTION + PRODUCT IMAGE ── */}
         <div style={{
           flex: '1 1 auto', display: 'flex', overflow: 'hidden',
-          borderBottom: BT,
+          borderBottom: BT, minHeight: 0,
         }}>
           {/* Left: Text content */}
           <div style={{
             flex: '1 1 auto', display: 'flex', flexDirection: 'column',
-            justifyContent: 'center', padding: '0.3mm 1.5mm',
+            justifyContent: 'center', padding: '0.5mm 1.5mm',
             overflow: 'hidden', minWidth: 0,
           }}>
             {product && (
               <span style={{
                 fontSize: s(5), fontWeight: 900,
                 textTransform: 'uppercase', lineHeight: 1.2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                display: 'block',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden', wordBreak: 'break-word',
               }}>
                 {product}
               </span>
@@ -218,9 +219,9 @@ const LabelCell = memo(function LabelCell({ label, fontScale = 1, fieldStyles })
 
         {/* ── FOOTER — 3 lines: Company/India, Mfg date/Email, Phone ── */}
         <div style={{
-          flexShrink: 0, padding: '0.3mm 1mm',
+          flexShrink: 0, padding: '0.4mm 1mm',
           fontSize: s(3.2), lineHeight: 1.25, color: '#000',
-          fontWeight: 400, borderTop: BT,
+          fontWeight: 400, overflow: 'hidden',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Jaquar & Co. Pvt. Ltd.</span>

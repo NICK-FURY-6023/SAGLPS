@@ -180,7 +180,13 @@ export default function LabelPreview({
             pdf.setTextColor(0, 0, 0);
             pdf.setFontSize(s(5));
             pdf.setFont('helvetica', 'bold');
-            pdf.text(code, cx + STRIP_W / 2, cy + CH / 2, { angle: 90, align: 'center' });
+            // Truncate code if it exceeds strip height
+            const maxCodeW = CH - 2;
+            let codeText = code;
+            while (pdf.getTextWidth(codeText) > maxCodeW && codeText.length > 3) {
+              codeText = codeText.slice(0, -1);
+            }
+            pdf.text(codeText, cx + STRIP_W / 2, cy + CH / 2, { angle: 90, align: 'center' });
           }
 
           // Content area after the strip
@@ -206,8 +212,15 @@ export default function LabelPreview({
             if (brand) {
               pdf.setFontSize(s(8));
               pdf.setFont('helvetica', 'bold');
-              pdf.text(brand.toUpperCase(), contentX + 0.5, curY + TOP_H / 2 + 0.8);
-              logoEndX = contentX + pdf.getTextWidth(brand.toUpperCase()) + 2;
+              const brandText = brand.toUpperCase();
+              // Truncate brand if wider than content area
+              const maxBrandW = contentW - 12;
+              let displayBrand = brandText;
+              while (pdf.getTextWidth(displayBrand) > maxBrandW && displayBrand.length > 2) {
+                displayBrand = displayBrand.slice(0, -1);
+              }
+              pdf.text(displayBrand, contentX + 0.5, curY + TOP_H / 2 + 0.8);
+              logoEndX = contentX + pdf.getTextWidth(displayBrand) + 2;
             }
           }
 
@@ -260,10 +273,12 @@ export default function LabelPreview({
           const sizeVal = label.size?.trim() || '—';
           const qtyVal = label.qty?.trim() || '—';
           const priceVal = label.price?.trim() ? `\u20B9${label.price.trim()}` : '—';
-          pdf.text(sizeVal, tblX + col1W / 2, dataY + TABLE_H / 4, { align: 'center' });
-          pdf.text(qtyVal, tblX + col1W + col2W / 2, dataY + TABLE_H / 4, { align: 'center' });
+          // Truncate table values to fit column widths
+          const fitText = (txt, maxW) => { const t = pdf.splitTextToSize(txt, maxW - 0.6); return t[0] || txt; };
+          pdf.text(fitText(sizeVal, col1W), tblX + col1W / 2, dataY + TABLE_H / 4, { align: 'center' });
+          pdf.text(fitText(qtyVal, col2W), tblX + col1W + col2W / 2, dataY + TABLE_H / 4, { align: 'center' });
           pdf.setFont('helvetica', 'bold');
-          pdf.text(priceVal, tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4, { align: 'center' });
+          pdf.text(fitText(priceVal, col3W), tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4, { align: 'center' });
 
           // "(Incl. of All Taxes)" below the MRP amount
           if (label.price?.trim()) {
@@ -272,10 +287,10 @@ export default function LabelPreview({
             pdf.text('(Incl. of All Taxes)', tblX + col1W + col2W + col3W / 2, dataY + TABLE_H / 4 + 1.8, { align: 'center' });
           }
 
-          curY += TABLE_H + 0.3;
+          curY += TABLE_H + 0.5;
           pdf.setLineWidth(0.12);
           pdf.line(cx + STRIP_W, curY, cx + CW, curY);
-          curY += 0.3;
+          curY += 0.5;
 
           // ── PRODUCT NAME + DESCRIPTION + PRODUCT IMAGE ──
           const productName = label.product?.trim() || '';
@@ -283,11 +298,12 @@ export default function LabelPreview({
           const prodImgUrl = label.productImage?.trim() || '';
           const prodImg = prodImgUrl ? prodImgCache[prodImgUrl] : null;
           const footerY = cy + CH - 6.5; // must match footerTop below
-          const midAvailH = footerY - curY - 0.6;
+          const PAD = 0.6; // internal padding from borders
+          const midAvailH = footerY - curY - PAD;
 
           // Product image on right side
           const IMG_COL_W = prodImg ? 11 : 0;
-          const textW = contentW - IMG_COL_W - (prodImg ? 1 : 0);
+          const textW = contentW - IMG_COL_W - (prodImg ? 1 : 0) - PAD;
 
           if (prodImg) {
             const imgX = contentX + contentW - IMG_COL_W;
@@ -302,45 +318,73 @@ export default function LabelPreview({
             } catch { /* skip */ }
           }
 
-          // Product name
-          let textY = curY + 0.5;
+          // Product name — allow up to 2 lines with word wrap
+          let textY = curY + PAD;
+          const textLeftX = contentX + PAD;
           if (productName) {
-            pdf.setFontSize(s(4.5));
+            let nameFontSize = s(4.5);
+            pdf.setFontSize(nameFontSize);
             pdf.setFont('helvetica', 'bold');
-            const nameText = productName.toUpperCase();
-            const truncated = pdf.splitTextToSize(nameText, textW - 1)[0] || nameText;
-            pdf.text(truncated, contentX + 0.5, textY + 1.5);
-            textY += 3;
+            let nameLines = pdf.splitTextToSize(productName.toUpperCase(), textW);
+            // Auto-shrink if name is too long for 2 lines
+            if (nameLines.length > 2) {
+              nameFontSize = s(3.8);
+              pdf.setFontSize(nameFontSize);
+              nameLines = pdf.splitTextToSize(productName.toUpperCase(), textW);
+            }
+            nameLines = nameLines.slice(0, 2);
+            const nameH = nameLines.length * nameFontSize * PT2MM * 1.3;
+            pdf.text(nameLines, textLeftX, textY + nameFontSize * PT2MM, { lineHeightFactor: 1.3 });
+            textY += nameH + 0.3;
           }
 
-          // Description
+          // Description — fill remaining space, auto-shrink if needed
           if (desc) {
-            pdf.setFontSize(s(3.5));
-            pdf.setFont('helvetica', 'bold');
-            const descLines = pdf.splitTextToSize(desc.toUpperCase(), textW - 1).slice(0, 2);
-            pdf.text(descLines, contentX + 0.5, textY + 1, { lineHeightFactor: 1.25 });
+            const descAvail = footerY - textY - PAD;
+            if (descAvail > 2) {
+              let descFontSize = s(3.5);
+              pdf.setFontSize(descFontSize);
+              pdf.setFont('helvetica', 'bold');
+              let descLines = pdf.splitTextToSize(desc.toUpperCase(), textW);
+              const lineH = descFontSize * PT2MM * 1.3;
+              const maxLines = Math.max(1, Math.floor(descAvail / lineH));
+              // Auto-shrink if too many lines
+              if (descLines.length > maxLines && descFontSize > s(2.8)) {
+                descFontSize = s(2.8);
+                pdf.setFontSize(descFontSize);
+                descLines = pdf.splitTextToSize(desc.toUpperCase(), textW);
+                const lineH2 = descFontSize * PT2MM * 1.3;
+                const maxLines2 = Math.max(1, Math.floor(descAvail / lineH2));
+                descLines = descLines.slice(0, maxLines2);
+              } else {
+                descLines = descLines.slice(0, maxLines);
+              }
+              pdf.text(descLines, textLeftX, textY + descFontSize * PT2MM, { lineHeightFactor: 1.3 });
+            }
           }
 
           // ── FOOTER — 3 lines: Company/India, MfgDate/Email, Phone ──
           const footerTop = cy + CH - 6.5;
           pdf.setLineWidth(0.1);
           pdf.line(cx + STRIP_W, footerTop, cx + CW, footerTop);
+          const ftX = contentX + 0.3; // inset from edges
+          const ftW = contentW - 0.6;
 
           // Line 1: Company + Made in India
           pdf.setFontSize(s(3));
           pdf.setFont('helvetica', 'normal');
-          pdf.text('Jaquar & Co. Pvt. Ltd.', contentX, footerTop + 1.5);
-          pdf.text('Made in India', contentX + contentW, footerTop + 1.5, { align: 'right' });
+          pdf.text('Jaquar & Co. Pvt. Ltd.', ftX, footerTop + 1.7);
+          pdf.text('Made in India', ftX + ftW, footerTop + 1.7, { align: 'right' });
 
           // Line 2: Mfg date + Email
           pdf.setFontSize(s(2.5));
           pdf.setTextColor(50, 50, 50);
           const mfgDate = label.mfgDate?.trim() || generateMfgDate();
-          pdf.text(`Mth/Yr of Mfg: ${mfgDate}`, contentX, footerTop + 3.3);
-          pdf.text('service@jaquar.com', contentX + contentW, footerTop + 3.3, { align: 'right' });
+          pdf.text(`Mth/Yr of Mfg: ${mfgDate}`, ftX, footerTop + 3.4);
+          pdf.text('service@jaquar.com', ftX + ftW, footerTop + 3.4, { align: 'right' });
 
           // Line 3: Phone number
-          pdf.text('Tel: 1800-102-9900', contentX + contentW, footerTop + 5, { align: 'right' });
+          pdf.text('Tel: 1800-102-9900', ftX + ftW, footerTop + 5, { align: 'right' });
           pdf.setTextColor(0, 0, 0);
         }
         } // end pageIdx loop
