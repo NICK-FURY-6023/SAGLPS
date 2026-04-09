@@ -1,10 +1,10 @@
 <div align="center">
 
-# Shree Ganpati Agency -- Label Print System v3.2
+# Shree Ganpati Agency -- Label Print System v4.0
 
-**Precision A4 label printing with Jaquar product integration, vector PDF export, and cloud sync**
+**Precision A4 label printing with dual layouts, Jaquar product integration, cloud sync, and vector PDF export**
 
-[![Version](https://img.shields.io/badge/Version-3.2.0-f97316?style=for-the-badge)](https://github.com/NIGHT-FURY-6023/printer-image-generator/releases)
+[![Version](https://img.shields.io/badge/Version-4.0.0-f97316?style=for-the-badge)](https://github.com/NIGHT-FURY-6023/printer-image-generator/releases)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind](https://img.shields.io/badge/Tailwind-4.0-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -12,7 +12,7 @@
 [![Vercel](https://img.shields.io/badge/Deployed-Vercel-000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com/)
 [![License](https://img.shields.io/badge/License-Private-ef4444?style=for-the-badge)]()
 
-> Print **12 labels per A4 sheet** (105x48mm each, 2x6 grid) with live preview, **instant Jaquar product search** (4,600+ products), **browser-native PDF/PNG/SVG export**, cloud templates, CSV import, and multi-page support. Built for Indian market hardware distribution workflows.
+> Print **12 or 18 labels per A4 sheet** with switchable layouts (2×6 at 105×48mm or 3×6 at 63.5×46.6mm), live preview, **instant Jaquar product search** (4,600+ products), **browser-native PDF/PNG/SVG export**, full cloud storage (drafts, history, templates), CSV import, and multi-page support. Built for Indian market hardware distribution workflows.
 
 </div>
 
@@ -30,7 +30,7 @@
 - [Authentication Flow](#authentication-flow)
 - [Project Structure](#project-structure)
 - [Features](#features)
-- [Whats New in v3.2](#whats-new-in-v32)
+- [Whats New in v4.0](#whats-new-in-v40)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -49,7 +49,7 @@ graph TB
         DB --> LPV[Label Preview]
         DB --> TM[Template Manager]
         LE -->|"labels[]"| LPV
-        LPV --> LS[Label Sheet x12]
+        LPV --> LS[Label Sheet x12 or x18]
         LPV -->|"PDF/PNG/SVG"| EX[Export Engine<br/>html-to-image + jsPDF]
         LPV -->|"Ctrl+P"| PR[Print Portal<br/>React createPortal]
     end
@@ -58,6 +58,8 @@ graph TB
         CDN[CDN / Static Assets]
         SF1["/api/auth/*"]
         SF2["/api/templates/*"]
+        SF5["/api/drafts"]
+        SF6["/api/history/*"]
         SF3["/api/jaquar-*"]
         SF4["/api/image-proxy"]
     end
@@ -70,6 +72,8 @@ graph TB
     Client -->|"HTTPS"| Vercel
     SF1 -->|"JWT verify"| SB
     SF2 -->|"CRUD"| SB
+    SF5 -->|"auto-save"| SB
+    SF6 -->|"print log"| SB
     SF3 -->|"HTML scrape"| JQ
     SF4 -->|"CORS proxy"| JQ
     SB -->|"WebSocket RTC"| TM
@@ -93,8 +97,8 @@ graph TB
 | **PDF** | jsPDF 2.5 | Vector PDF generation |
 | **DOM Capture** | html-to-image 1.11 | Browser-native PNG/SVG/Canvas export |
 | **QR Codes** | qrcode 1.5 | Per-label QR code generation (LRU cached) |
-| **Backend** | Vercel Serverless Functions | 9 API endpoints (Node.js) |
-| **Database** | Supabase (PostgreSQL) | Template storage + realtime sync |
+| **Backend** | Vercel Serverless Functions | 13 API endpoints (Node.js) |
+| **Database** | Supabase (PostgreSQL) | Templates, drafts, history + realtime sync |
 | **Auth** | JWT + bcrypt | 7-day tokens, salt-12 password hashing |
 | **Notifications** | react-hot-toast 2.6 | Toast feedback for all operations |
 | **Deployment** | Vercel CDN | Auto-deploy from GitHub, edge caching |
@@ -119,8 +123,8 @@ graph TD
     DASH --> PREVIEW["LabelPreview.jsx<br/>293 lines<br/>A4 preview + export toolbar"]
     DASH --> TMGR["TemplateManager.jsx<br/>285 lines<br/>Cloud save/load/delete"]
 
-    PREVIEW --> SHEET["LabelSheet.jsx<br/>382 lines<br/>2x6 grid renderer"]
-    SHEET --> CELL1["LabelCell memo<br/>x12 per sheet"]
+    PREVIEW --> SHEET["LabelSheet.jsx<br/>390 lines<br/>2x6 or 3x6 grid renderer"]
+    SHEET --> CELL1["LabelCell memo<br/>x12 or x18 per sheet"]
     PREVIEW --> PORTAL["Print Portal<br/>createPortal to body"]
     PREVIEW --> EXPORT["Export Engine<br/>PDF / PNG / SVG"]
 
@@ -136,7 +140,7 @@ graph TD
 | Dashboard.jsx | 1,155 | Page management, undo/redo, CSV import, history, state hub |
 | Landing.jsx | 765 | Public homepage with 3D animations and feature showcase |
 | LabelEditor.jsx | 728 | 11 form fields per label, Jaquar live search, bulk operations |
-| LabelSheet.jsx | 382 | A4 sheet renderer (2x6 CSS Grid), canvas text measurement |
+| LabelSheet.jsx | 390 | A4 sheet renderer (2x6 or 3x6 CSS Grid), canvas text measurement |
 | LabelPreview.jsx | 293 | Scaled A4 preview, PDF/PNG/SVG export, print portal, toolbar |
 | TemplateManager.jsx | 285 | Supabase CRUD + localStorage fallback, realtime sync |
 | Login.jsx | 189 | JWT auth form with validation |
@@ -173,7 +177,7 @@ sequenceDiagram
 
     Note over U,SB: PREVIEW AND EXPORT
     DB->>LP: labels[] prop
-    LP->>LS: Render 12 LabelCells
+    LP->>LS: Render 12 or 18 LabelCells
     LS->>LS: buildTextLines() via canvas measurement
     LS-->>LP: Rendered A4 sheet
 
@@ -193,9 +197,11 @@ sequenceDiagram
 
 ## Label Anatomy
 
-Each A4 sheet holds **12 labels** in a **2-column x 6-row** CSS Grid.
+The app supports **two switchable layouts** per A4 sheet.
 
-### A4 Sheet Layout (210mm x 297mm)
+### Layout 1: 12 Labels (2×6 Grid, 105×48mm)
+
+Each A4 sheet holds **12 labels** in a **2-column x 6-row** CSS Grid.
 
 ```
 +-----------------------------------------------------+
@@ -221,6 +227,32 @@ Each A4 sheet holds **12 labels** in a **2-column x 6-row** CSS Grid.
 |  +---------------------+  +---------------------+   |
 |  3.5mm                                    3.5mm      |
 +-----------------------------------------------------+
+```
+
+### Layout 2: 18 Labels (3×6 Grid, 63.5×46.6mm)
+
+Each A4 sheet holds **18 labels** in a **3-column x 6-row** CSS Grid with **4mm column gaps** and **no row gaps**.
+
+```
++-----------------------------------------------------------+
+|  8.7mm top padding                                         |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 1       |4mm |   Label 2       |4mm |  Label 3  |
+|  | 63.5mm x 46.6mm |    | 63.5mm x 46.6mm |    |           |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 4       |    |   Label 5       |    |  Label 6  |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 7       |    |   Label 8       |    |  Label 9  |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 10      |    |   Label 11      |    |  Label 12 |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 13      |    |   Label 14      |    |  Label 15 |
+|  +-----------------+    +-----------------+    +-----------+
+|  |   Label 16      |    |   Label 17      |    |  Label 18 |
+|  +-----------------+    +-----------------+    +-----------+
+|  5.75mm                                          5.75mm    |
+|  8.7mm bottom padding                                      |
++-----------------------------------------------------------+
 ```
 
 ### Single Label Layout (105mm x 48mm)
@@ -340,6 +372,15 @@ graph LR
         T5["DELETE /api/templates/:id<br/>Delete"]
     end
 
+    subgraph Cloud["Cloud Storage"]
+        D1["GET /api/drafts<br/>Load current draft"]
+        D2["PUT /api/drafts<br/>Auto-save draft"]
+        H1["GET /api/history<br/>List print history"]
+        H2["POST /api/history<br/>Add history entry"]
+        H3["DELETE /api/history<br/>Clear all history"]
+        H4["DELETE /api/history/:id<br/>Delete single entry"]
+    end
+
     subgraph Jaquar["Jaquar Integration"]
         J1["GET /api/jaquar-search<br/>Search products"]
         J2["GET /api/jaquar-product<br/>Product details + MRP"]
@@ -349,11 +390,14 @@ graph LR
 
     A1 & A2 --> DB[(Supabase)]
     T1 & T2 & T3 & T4 & T5 --> DB
+    D1 & D2 --> DB
+    H1 & H2 & H3 & H4 --> DB
     J1 & J2 & J3 --> JQ[Jaquar.com]
     J4 --> JQ
 
     style Auth fill:#ef4444,stroke:#dc2626,color:#fff
     style Templates fill:#f97316,stroke:#ea580c,color:#fff
+    style Cloud fill:#22c55e,stroke:#16a34a,color:#fff
     style Jaquar fill:#2563eb,stroke:#1d4ed8,color:#fff
 ```
 
@@ -364,6 +408,12 @@ graph LR
 | /api/templates | GET | Bearer | Array of templates |
 | /api/templates | POST | Bearer | Created template |
 | /api/templates/:id | GET/PUT/DELETE | Bearer | Template object |
+| /api/drafts | GET | Bearer | Current draft (pages + layoutId) |
+| /api/drafts | PUT | Bearer | Upserted draft |
+| /api/history | GET | Bearer | Array of print history (max 30) |
+| /api/history | POST | Bearer | Created history entry |
+| /api/history | DELETE | Bearer | Cleared all history |
+| /api/history/:id | DELETE | Bearer | Deleted single entry |
 | /api/jaquar-search | GET | No | Array of products |
 | /api/jaquar-product | GET | No | Product details + MRP |
 | /api/jaquar-price | GET | No | MRP price |
@@ -440,7 +490,7 @@ printer-image-generator/
 |   |   |-- Dashboard.jsx              Main editor hub (state management center)
 |   |   |-- LabelEditor.jsx            12-field form + Jaquar live search
 |   |   |-- LabelPreview.jsx           A4 preview + PDF/PNG/SVG/Print export
-|   |   |-- LabelSheet.jsx             Single A4 sheet (2x6 grid + text measurement)
+|   |   |-- LabelSheet.jsx             Single A4 sheet (2x6 or 3x6 grid + text measurement)
 |   |   |-- TemplateManager.jsx        Cloud save/load/delete templates
 |   |   |-- ErrorBoundary.jsx          Error UI fallback
 |   |
@@ -455,6 +505,7 @@ printer-image-generator/
 |   |-- utils/
 |       |-- mfgDate.js                  Random MFG date (3-5 months back, MM/YYYY)
 |       |-- dynamicImport.js            Stale chunk recovery with cache-bust reload
+|       |-- layoutConfig.js             Layout definitions (12-label and 18-label)
 |
 |-- api/
 |   |-- auth/
@@ -463,6 +514,11 @@ printer-image-generator/
 |   |-- templates/
 |   |   |-- index.js                    GET/POST: list + create templates
 |   |   |-- [id].js                     GET/PUT/DELETE: single template
+|   |-- drafts/
+|   |   |-- index.js                    GET/PUT: auto-save draft to cloud
+|   |-- history/
+|   |   |-- index.js                    GET/POST/DELETE: print history (max 30)
+|   |   |-- [id].js                     DELETE: single history entry
 |   |-- jaquar-search.js               GET: search jaquar.com (HTML scrape)
 |   |-- jaquar-product.js              GET: product details + MRP
 |   |-- jaquar-price.js                GET: MRP price extraction
@@ -503,16 +559,17 @@ printer-image-generator/
 
 ### Label Editor
 
-- 12 labels per page (2x6 grid on A4)
+- **Dual layouts**: 12 labels (2×6, 105×48mm) or 18 labels (3×6, 63.5×46.6mm) — switchable in toolbar
 - 11 editable fields per label
 - Live Jaquar search with dropdown (150ms debounce, <5ms local search)
 - Auto-fill: code, name, description, price, product URL, product image
 - QR code auto-generated from product URL
 - Bulk operations: fill all, duplicate, copy/paste between labels
+- Compact label rendering auto-adjusts fonts/spacing for 18-label layout
 
 ### Multi-page Support
 
-- Unlimited A4 pages (12 labels each)
+- Unlimited A4 pages (12 or 18 labels each, depending on layout)
 - Page navigator with filled-count badges
 - Add, remove, duplicate pages
 - All pages exported in single PDF
@@ -523,10 +580,11 @@ printer-image-generator/
 - **CSV Export** -- All 11 fields with headers
 - **JSON Import/Export** -- Full backup and restore
 - **Cloud Templates** -- Save/load/delete via Supabase with realtime sync
-- **Print History** -- Last 30 operations in localStorage with auto-naming
+- **Cloud Drafts** -- Auto-save current work to Supabase every 2s (no localStorage)
+- **Cloud History** -- Last 30 print operations stored in Supabase with auto-naming
 - **Template Gallery** -- Pre-built templates for quick start
 - **Undo/Redo** -- 30-operation stack (Ctrl+Z / Ctrl+Y)
-- **Auto-save** -- Draft saved every 1.2s + periodic 30s backup
+- **Auto-save** -- Draft saved to cloud every 2s via debounced API call
 
 ### UI/UX
 
@@ -540,35 +598,38 @@ printer-image-generator/
 
 ---
 
-## Whats New in v3.2
+## Whats New in v4.0
 
-### Browser-Native Export Engine
+### Dual Layout System (12 or 18 Labels)
 
-- **Replaced html2canvas with html-to-image** -- uses browser own rendering engine via SVG foreignObject
-- Full CSS Grid support in exports (html2canvas had zero grid-template support)
-- Pixel-perfect PDF/PNG/SVG output matching the browser preview exactly
-- 14x smaller library (14 KB vs 202 KB)
+- **New 18-label layout**: 3 columns × 6 rows, 63.5×46.6mm per label
+- **Layout switcher** in the Dashboard toolbar — toggle between 2×6 and 3×6
+- Compact rendering mode for 18-label layout (0.78× font scale, narrower strips, simplified footer)
+- 4mm column gaps, 0mm row gaps, 8.7mm equal top/bottom margins, 5.75mm side margins
+- Centralized layout config in `src/utils/layoutConfig.js`
+- All features (CSV import, templates, history, PDF export) adapt to selected layout
 
-### Print Text Clipping Fix
+### Full Cloud Storage
 
-- Removed overflow hidden from individual label cells
-- Moved overflow control to CSS Grid cell level (.sheet > *)
-- Text no longer gets cut off during Ctrl+P print
+- **Drafts to cloud**: Auto-save to Supabase `drafts` table every 2s (debounced). No more localStorage for drafts.
+- **History to cloud**: Print history stored in Supabase `history` table (max 30 entries, auto-pruned). Includes page count, labels per page, layout info.
+- **New API endpoints**: `/api/drafts` (GET/PUT) and `/api/history` (GET/POST/DELETE) + `/api/history/:id` (DELETE)
+- Loading spinner on initial draft fetch
+- Realtime sync watches `drafts` table for live updates across tabs
 
-### Stale Chunk Recovery
+### New Domain
 
-- Cache-busting page reload on dynamic import failures after redeployment
-- no-cache headers extended to all SPA routes (not just /index.html)
-- Eliminates "Failed to fetch dynamically imported module" errors
+- Migrated from `printer-image-generator.vercel.app` to **`saglps.vercel.app`**
+- Updated CORS fallbacks, OG meta tags, JSON-LD schema, and OG image watermark
 
-### Previous Highlights (v3.1)
+### Previous Highlights (v3.2)
 
+- Browser-native export via html-to-image (replaced html2canvas)
+- Full CSS Grid support in PDF/PNG/SVG exports
+- Stale chunk recovery with cache-busting reload
 - 4,600+ Jaquar products preloaded for instant local search
 - React Portal print system (no blank pages)
 - Code splitting: 500KB to 235KB main bundle (53% reduction)
-- 3D dynamic UI with depth panels and glow animations
-- Multi-page labels with page navigator
-- Auto-generated manufacturing dates (3-5 months back)
 
 ---
 
@@ -655,7 +716,7 @@ node scripts/build-jaquar-db.js    # Crawls jaquar.com -> public/jaquar-products
 | PDF generation | 1-3 seconds |
 | QR code cache | LRU, 50 entries |
 | Undo stack depth | 30 operations |
-| Auto-save interval | 1.2s draft + 30s periodic |
+| Auto-save interval | 2s debounced to cloud |
 | Jaquar product DB | 4,600+ products (1.2 MB) |
 
 ---
@@ -670,7 +731,8 @@ graph TD
     end
 
     subgraph Dash["Dashboard State"]
-        PG["pages[]<br/>Array of 12-label arrays"]
+        PG["pages[]<br/>Array of label arrays (12 or 18 per page)"]
+        LY["layoutId<br/>'layout12' or 'layout18'"]
         CP["currentPage index"]
         US["undoStack / redoStack<br/>30 ops each"]
         CO["copies 1-10"]
@@ -683,15 +745,15 @@ graph TD
     end
 
     subgraph Persist["Persistence"]
-        LS["localStorage<br/>drafts, history, theme"]
         SS["sessionStorage<br/>JWT token"]
-        SB["Supabase<br/>templates + realtime"]
+        LS["localStorage<br/>theme only"]
+        SB["Supabase<br/>templates + drafts + history + realtime"]
     end
 
     AC --> SS
     TC --> LS
-    PG --> LS
     PG --> SB
+    LY --> SB
     Editor --> PG
 
     style Global fill:#7c3aed,stroke:#6d28d9,color:#fff
