@@ -30,13 +30,24 @@
   width: 210mm !important;
   height: 297mm !important;
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  grid-template-rows: repeat(6, 1fr) !important;
-  padding: 7mm 3.5mm !important;
   margin: 0 !important;
   background: white !important;
   box-sizing: border-box !important;
+}
+/* Layout: 12 labels — 2 cols × 6 rows, 105×48mm */
+.sheet-12 {
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-rows: repeat(6, 1fr) !important;
+  padding: 7mm 3.5mm !important;
   gap: 1mm !important;
+}
+/* Layout: 18 labels — 3 cols × 6 rows, 63.5×46.6mm */
+.sheet-18 {
+  grid-template-columns: repeat(3, 63.5mm) !important;
+  grid-template-rows: repeat(6, 46.6mm) !important;
+  padding: 10mm 6mm 0 !important;
+  gap: 0.5mm !important;
+  justify-content: center !important;
 }
 .sheet > * {
   overflow: hidden;

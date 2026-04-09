@@ -463,7 +463,7 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
               onMouseOut={e  => e.currentTarget.style.background = 'rgba(249,115,22,0.1)'}
             >
               <Icon d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1M8 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M8 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m0 0h2a2 2 0 0 1 2 2v3m2 4H10m0 0 3-3m-3 3 3 3" />
-              Copy to All 12
+              Copy to All
             </button>
             <button
               onClick={() => onReset(index)}
@@ -538,7 +538,7 @@ export default function LabelEditor({ labels, setLabels }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2 style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', letterSpacing: '0.05em', margin: 0 }}>LABEL EDITOR</h2>
-          <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>{filledCount} of 12 labels filled</p>
+          <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>{filledCount} of {labels.length} labels filled</p>
         </div>
         <button
           onClick={() => setApplyPanelOpen(o => !o)}
@@ -689,7 +689,7 @@ export default function LabelEditor({ labels, setLabels }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
-            Apply Filled Fields to All 12 Labels
+            Apply Filled Fields to All {labels.length} Labels
           </button>
         </div>
       )}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 
 import { dynamicImport } from '../utils/dynamicImport';
+import { getLabelsPerPage } from '../utils/layoutConfig';
 import LabelSheet from './LabelSheet';
 
 const A4_W = 794;
@@ -46,6 +47,7 @@ function ToolBtn({ onClick, disabled, title, children, variant = 'ghost', style:
 export default function LabelPreview({
   labels,
   pages,
+  layout,
   onSave, onLoad, onPrint,
   copies = 1, onCopiesChange,
 }) {
@@ -153,6 +155,7 @@ export default function LabelPreview({
     }
   };
 
+  const labelsPerPage = getLabelsPerPage(layout);
   const filledCount = labels.filter(l => l.product?.trim()).length;
   const totalPages = pages ? pages.length : 1;
   const totalFilled = pages ? pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0) : filledCount;
@@ -248,7 +251,7 @@ export default function LabelPreview({
 
         {/* Stats */}
         <div style={{ padding: '4px 10px', borderRadius: 20, background: '#0f172a', border: '1px solid #334155', fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
-          {totalFilled}/{totalPages * 12}{totalPages > 1 ? ` (${totalPages}pg)` : ''} &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
+          {totalFilled}/{totalPages * labelsPerPage}{totalPages > 1 ? ` (${totalPages}pg)` : ''} &middot; <span style={{ color: '#f97316' }}>{Math.round(scale * 100)}%</span>
         </div>
       </div>
 
@@ -272,7 +275,7 @@ export default function LabelPreview({
           boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06), 0 4px 16px rgba(249,115,22,0.08)',
         }}>
           <div className="print-scale-wrapper" style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: A4_W, height: A4_H }}>
-            <LabelSheet labels={labels} />
+            <LabelSheet labels={labels} layout={layout} />
           </div>
         </div>
       </div>
@@ -282,7 +285,7 @@ export default function LabelPreview({
         <div className="print-root" style={{ display: 'none' }}>
           {Array.from({ length: copies }, (_, copyIdx) =>
             (pages || [labels]).map((pageLabels, pageIdx) => (
-              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} />
+              <LabelSheet key={`${copyIdx}-${pageIdx}`} labels={pageLabels} layout={layout} />
             ))
           )}
         </div>,

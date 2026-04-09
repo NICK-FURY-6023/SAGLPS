@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { getTemplates } from '../services/api';
 import { getSupabaseClient } from '../services/supabase';
 import { generateMfgDate } from '../utils/mfgDate';
+import { LAYOUTS, DEFAULT_LAYOUT, getLayout, getLabelsPerPage } from '../utils/layoutConfig';
 import LabelEditor from './LabelEditor';
 import LabelPreview from './LabelPreview';
 import TemplateManager from './TemplateManager';
@@ -13,7 +14,8 @@ import TemplateManager from './TemplateManager';
 const emptyLabel = () => ({
   product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: generateMfgDate(),
 });
-const initialLabels = () => Array.from({ length: 12 }, emptyLabel);
+const createInitialLabels = (count = 12) => Array.from({ length: count }, emptyLabel);
+const initialLabels = () => createInitialLabels(12);
 const DRAFT_KEY   = 'ganpati_draft';
 const HISTORY_KEY = 'ganpati_history';
 
@@ -65,7 +67,7 @@ function Icon({ d, size = 13, sw = 2 }) {
 }
 
 /* ── CSV Import Modal ─────────────────────────────────────────────── */
-function CSVImportModal({ onImport, onClose }) {
+function CSVImportModal({ onImport, onClose, labelsPerPage = 12 }) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState([]);
   const [error, setError] = useState('');
@@ -100,7 +102,7 @@ function CSVImportModal({ onImport, onClose }) {
       header.forEach((h, i) => { if (CSV_COLUMNS.includes(h)) obj[h] = vals[i] || ''; });
       return { ...emptyLabel(), ...obj };
     });
-    return { rows: rows.slice(0, 12), totalRows: rows.length };
+    return { rows: rows.slice(0, labelsPerPage), totalRows: rows.length };
   };
 
   const handleText = (val) => {
@@ -111,7 +113,7 @@ function CSVImportModal({ onImport, onClose }) {
     if (result.error) { setError(result.error); setPreview([]); }
     else {
       setPreview(result.rows);
-      if (result.totalRows > 12) setError(`Note: Only first 12 of ${result.totalRows} labels imported.`);
+      if (result.totalRows > labelsPerPage) setError(`Note: Only first ${labelsPerPage} of ${result.totalRows} labels imported.`);
     }
   };
 
@@ -137,7 +139,7 @@ function CSVImportModal({ onImport, onClose }) {
 
   const handleImport = () => {
     if (!preview.length) return;
-    const padded = Array.from({ length: 12 }, (_, i) => preview[i] || emptyLabel());
+    const padded = Array.from({ length: labelsPerPage }, (_, i) => preview[i] || emptyLabel());
     onImport(padded);
   };
 
@@ -147,7 +149,7 @@ function CSVImportModal({ onImport, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>Import from CSV</h2>
-            <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>Upload a CSV file or paste CSV text to fill all 12 labels at once</p>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>Upload a CSV file or paste CSV text to fill all {labelsPerPage} labels at once</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
@@ -215,7 +217,7 @@ function CSVImportModal({ onImport, onClose }) {
 }
 
 /* ── Print History Modal ──────────────────────────────────────────── */
-function HistoryModal({ onClose, onRestore }) {
+function HistoryModal({ onClose, onRestore, labelsPerPage = 12 }) {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
@@ -283,7 +285,7 @@ function HistoryModal({ onClose, onRestore }) {
                     <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8', marginLeft: 8, textTransform: 'capitalize' }}>{h.action}</span>
                   </div>
                   <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>
-                    {h.filledCount}/{(h.pageCount || 1) * 12} labels{h.pageCount > 1 ? ` · ${h.pageCount} pages` : ''}{h.copies > 1 ? ` · ${h.copies} copies` : ''}
+                    {h.filledCount}/{(h.pageCount || 1) * (h.labelsPerPage || labelsPerPage)} labels{h.pageCount > 1 ? ` · ${h.pageCount} pages` : ''}{h.copies > 1 ? ` · ${h.copies} copies` : ''}
                   </div>
                   <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>{fmtDate(h.time)}</span>
@@ -337,14 +339,14 @@ function generateAutoName(pages) {
 }
 
 /* ── Log to history ───────────────────────────────────────────────── */
-function logHistory(action, templateName, filledCount, pages, copies = 1) {
+function logHistory(action, templateName, filledCount, pages, copies = 1, labelsPerPage = 12) {
   try {
     const autoName = generateAutoName(pages);
     const displayName = templateName || autoName;
     const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     const entry = {
       id: Date.now(), action, templateName: displayName, autoName, filledCount, copies,
-      pageCount: pages.length,
+      pageCount: pages.length, labelsPerPage,
       time: new Date().toISOString(),
       pages: JSON.parse(JSON.stringify(pages)),
       // Keep backward compat: labels = first page
@@ -426,7 +428,7 @@ const PRESET_TEMPLATES = [
     ],
   },
   {
-    name: 'Empty 12 Labels',
+    name: 'Empty Sheet',
     labels: [],
   },
 ];
@@ -497,16 +499,31 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // ── Layout state ──
+  const [layoutId, setLayoutId] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.layoutId && LAYOUTS[parsed.layoutId]) return parsed.layoutId;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_LAYOUT;
+  });
+  const labelsPerPage = getLabelsPerPage(layoutId);
+
   // ── Multi-page state ──
   const [pages, setPages] = useState(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        const savedLayout = (parsed.layoutId && LAYOUTS[parsed.layoutId]) ? parsed.layoutId : DEFAULT_LAYOUT;
+        const count = getLabelsPerPage(savedLayout);
         // New format: { pages: [[...], [...]] }
         if (parsed.pages && Array.isArray(parsed.pages) && parsed.pages.length) {
           return parsed.pages.map(page =>
-            Array.from({ length: 12 }, (_, i) => {
+            Array.from({ length: count }, (_, i) => {
               const l = { ...emptyLabel(), ...(page[i] || {}) };
               if (!l.mfgDate) l.mfgDate = generateMfgDate();
               return l;
@@ -515,7 +532,7 @@ export default function Dashboard() {
         }
         // Old format: flat array of 12
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return [Array.from({ length: 12 }, (_, i) => {
+          return [Array.from({ length: count }, (_, i) => {
             const l = { ...emptyLabel(), ...(parsed[i] || {}) };
             if (!l.mfgDate) l.mfgDate = generateMfgDate();
             return l;
@@ -523,7 +540,7 @@ export default function Dashboard() {
         }
       }
     } catch { /* ignore */ }
-    return [initialLabels()];
+    return [createInitialLabels(getLabelsPerPage(DEFAULT_LAYOUT))];
   });
   const [currentPage, setCurrentPage] = useState(0);
   const pagesRef = useRef(pages);
@@ -577,12 +594,24 @@ export default function Dashboard() {
   // Bug #1 fix: use functional update to avoid stale pages.length
   const addPage = useCallback(() => {
     setPages(prev => {
-      const updated = [...prev, initialLabels()];
+      const updated = [...prev, createInitialLabels(labelsPerPage)];
       setCurrentPage(updated.length - 1);
       toast.success(`Page ${updated.length} added`);
       return updated;
     });
-  }, []);
+  }, [labelsPerPage]);
+
+  // Layout switcher — resizes all pages to match new label count
+  const handleLayoutChange = useCallback((newLayoutId) => {
+    if (newLayoutId === layoutId) return;
+    const newCount = getLabelsPerPage(newLayoutId);
+    setLayoutId(newLayoutId);
+    setPages(prev => prev.map(page => {
+      if (page.length === newCount) return page;
+      return Array.from({ length: newCount }, (_, i) => page[i] ? { ...page[i] } : emptyLabel());
+    }));
+    toast.success(`Switched to ${getLayout(newLayoutId).name}`);
+  }, [layoutId]);
 
   // Bug #1 fix: move currentPage update inside setPages callback
   const removePage = useCallback((idx) => {
@@ -625,14 +654,14 @@ export default function Dashboard() {
   const autoFadeTimer = useRef(null);
   const periodicSaveTimer = useRef(null);
   const saveDraft = useCallback(() => {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages, layoutId })); }
     catch (err) {
       if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
     }
     setAutoSaved(true);
     clearTimeout(autoFadeTimer.current);
     autoFadeTimer.current = setTimeout(() => setAutoSaved(false), 2000);
-  }, [pages]);
+  }, [pages, layoutId]);
 
   useEffect(() => {
     clearTimeout(autoSaveTimer.current);
@@ -646,7 +675,7 @@ export default function Dashboard() {
   // Periodic auto-save every 30s
   useEffect(() => {
     periodicSaveTimer.current = setInterval(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages })); } catch {}
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages, layoutId })); } catch {}
     }, 30000);
     return () => clearInterval(periodicSaveTimer.current);
   }, [pages]);
@@ -666,7 +695,7 @@ export default function Dashboard() {
           const hasLocal = pagesRef.current.some(p => p.some(l => l.product?.trim() || l.code?.trim()));
           if (!hasLocal && data.label_data?.pages?.length) {
             const loaded = data.label_data.pages.map(page =>
-              Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+              Array.from({ length: labelsPerPage }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
             );
             if (loaded.some(p => p.some(l => l.product?.trim() || l.code?.trim()))) {
               setPages(loaded);
@@ -720,7 +749,7 @@ export default function Dashboard() {
   const handlePrint = useCallback(() => {
     const totalFilled = pages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
     if (!totalFilled) { toast.error('No labels filled — nothing to print!'); return; }
-    logHistory('print', currentTemplateName, totalFilled, pages, copies);
+    logHistory('print', currentTemplateName, totalFilled, pages, copies, labelsPerPage);
     window.print();
   }, [pages, currentTemplateName, copies]);
 
@@ -769,30 +798,30 @@ export default function Dashboard() {
     // New format: { pages: [[...], [...]] }
     if (raw && raw.pages && Array.isArray(raw.pages)) {
       loadedPages = raw.pages.map(page =>
-        Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
+        Array.from({ length: labelsPerPage }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
       );
     } else {
       // Old format: flat array
       const arr = Array.isArray(raw) ? raw : (raw?.labels ?? []);
-      loadedPages = [Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }))];
+      loadedPages = [Array.from({ length: labelsPerPage }, (_, i) => ({ ...emptyLabel(), ...(arr[i] || {}) }))];
     }
     setPages(loadedPages);
     setCurrentPage(0);
     setCurrentTemplateName(template.name);
     setShowTemplateManager(false);
     const totalFilled = loadedPages.reduce((sum, p) => sum + p.filter(l => l.product?.trim()).length, 0);
-    logHistory('load', template.name, totalFilled, loadedPages);
+    logHistory('load', template.name, totalFilled, loadedPages, 1, labelsPerPage);
     toast.success(`Loaded "${template.name}"`);
   };
 
   const handleReset = useCallback(() => {
     if (!confirm('Reset all pages and labels?')) return;
-    setPages([initialLabels()]);
+    setPages([createInitialLabels(labelsPerPage)]);
     setCurrentPage(0);
     setCurrentTemplateName('');
     localStorage.removeItem(DRAFT_KEY);
     toast('Labels cleared');
-  }, []);
+  }, [labelsPerPage]);
 
   const handleCSVImport = useCallback((newLabels) => {
     setLabels(newLabels);
@@ -802,17 +831,17 @@ export default function Dashboard() {
   }, [setLabels, currentPage]);
 
   const handleTemplateApply = useCallback((template) => {
-    const newLabels = Array.from({ length: 12 }, (_, i) => ({
+    const newLabels = Array.from({ length: labelsPerPage }, (_, i) => ({
       ...emptyLabel(),
       ...(template.labels[i] || {}),
     }));
     setLabels(newLabels);
     setCurrentTemplateName(template.name);
     toast.success(`Applied "${template.name}"`);
-  }, [setLabels]);
+  }, [setLabels, labelsPerPage]);
 
   const handleJSONExport = useCallback(() => {
-    const data = { pages, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
+    const data = { pages, layoutId, templateName: currentTemplateName || 'Untitled', exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url;
@@ -855,11 +884,16 @@ export default function Dashboard() {
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
+          // If imported file has a layout, switch to it
+          if (data.layoutId && LAYOUTS[data.layoutId]) {
+            setLayoutId(data.layoutId);
+          }
+          const importCount = data.layoutId && LAYOUTS[data.layoutId] ? getLabelsPerPage(data.layoutId) : labelsPerPage;
           let loadedPages;
           if (data.pages && Array.isArray(data.pages)) {
             loadedPages = data.pages.map(page => {
-              if (!Array.isArray(page)) return initialLabels();
-              return Array.from({ length: 12 }, (_, i) => {
+              if (!Array.isArray(page)) return createInitialLabels(importCount);
+              return Array.from({ length: importCount }, (_, i) => {
                 const item = page[i];
                 return { ...emptyLabel(), ...(isValidLabel(item) ? item : {}) };
               });
@@ -867,7 +901,7 @@ export default function Dashboard() {
           } else {
             const arr = Array.isArray(data) ? data : (data.labels || []);
             if (!arr.length) { toast.error('Invalid JSON format'); return; }
-            loadedPages = [Array.from({ length: 12 }, (_, i) => {
+            loadedPages = [Array.from({ length: importCount }, (_, i) => {
               const item = arr[i];
               return { ...emptyLabel(), ...(isValidLabel(item) ? item : {}) };
             })];
@@ -920,7 +954,7 @@ export default function Dashboard() {
               Saved
             </div>
             <div style={{ padding: '2px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', fontSize: 10, fontWeight: 600 }}>
-              {totalFilled}/{pages.length * 12}
+              {totalFilled}/{pages.length * labelsPerPage}
               {pages.length > 1 && <span style={{ opacity: 0.7, marginLeft: 3 }}>({pages.length}pg)</span>}
             </div>
             <Btn onClick={toggleTheme} variant="ghost" style={{ padding: '5px 6px' }} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
@@ -1004,9 +1038,30 @@ export default function Dashboard() {
       {/* ─── Page Navigator ─── */}
       <div className="depth-shadow" style={{
         background: 'linear-gradient(180deg, #1e293b, #172032)', borderBottom: '1px solid #334155', flexShrink: 0,
-        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', flexWrap: 'wrap',
         maxWidth: 1600, width: '100%', margin: '0 auto',
       }}>
+        {/* Layout switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 8 }}>
+          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em' }}>LAYOUT</span>
+          {Object.values(LAYOUTS).map(lo => (
+            <button
+              key={lo.id}
+              onClick={() => handleLayoutChange(lo.id)}
+              title={`${lo.name} — ${lo.labelWidth} × ${lo.labelHeight}`}
+              style={{
+                padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                border: layoutId === lo.id ? '1px solid #f97316' : '1px solid #334155',
+                background: layoutId === lo.id ? 'rgba(249,115,22,0.18)' : 'rgba(255,255,255,0.04)',
+                color: layoutId === lo.id ? '#f97316' : '#94a3b8',
+                transition: 'all 0.15s',
+              }}
+            >
+              {lo.shortName}
+            </button>
+          ))}
+        </div>
+        <div style={{ width: 1, height: 18, background: '#334155', margin: '0 2px' }} />
         <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, letterSpacing: '0.05em', marginRight: 4 }}>PAGES</span>
         {pages.map((page, i) => {
           const pFilled = page.filter(l => l.product?.trim()).length;
@@ -1016,7 +1071,7 @@ export default function Dashboard() {
               key={i}
               onClick={() => setCurrentPage(i)}
               onContextMenu={(e) => { e.preventDefault(); if (pages.length > 1) removePage(i); }}
-              title={`Page ${i + 1} — ${pFilled}/12 filled${pages.length > 1 ? ' (right-click to remove)' : ''}`}
+              title={`Page ${i + 1} — ${pFilled}/${labelsPerPage} filled${pages.length > 1 ? ' (right-click to remove)' : ''}`}
               style={{
                 padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 border: isActive ? '1px solid #f97316' : '1px solid #334155',
@@ -1030,7 +1085,7 @@ export default function Dashboard() {
                 <span style={{
                   position: 'absolute', top: -4, right: -4,
                   width: 14, height: 14, borderRadius: '50%', fontSize: 8, fontWeight: 700,
-                  background: pFilled === 12 ? '#22c55e' : '#f97316', color: 'white',
+                  background: pFilled === labelsPerPage ? '#22c55e' : '#f97316', color: 'white',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {pFilled}
@@ -1086,7 +1141,7 @@ export default function Dashboard() {
           </>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 10, color: '#475569' }}>
-          Page {currentPage + 1} of {pages.length} &middot; {filledCount}/12 on this page
+          Page {currentPage + 1} of {pages.length} &middot; {filledCount}/{labelsPerPage} on this page
         </span>
       </div>
 
@@ -1125,6 +1180,7 @@ export default function Dashboard() {
           <LabelPreview
             labels={labels}
             pages={pages}
+            layout={layoutId}
             onSave={openSave}
             onLoad={openLoad}
             copies={copies}
@@ -1137,11 +1193,11 @@ export default function Dashboard() {
       {showTemplateManager && (
         <TemplateManager mode={templateManagerMode} labels={{ pages }} onLoad={handleTemplateLoad} onClose={() => setShowTemplateManager(false)} />
       )}
-      {showCSVImport && <CSVImportModal onImport={handleCSVImport} onClose={() => setShowCSVImport(false)} />}
-      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onRestore={(restoredPages, n) => {
+      {showCSVImport && <CSVImportModal onImport={handleCSVImport} onClose={() => setShowCSVImport(false)} labelsPerPage={labelsPerPage} />}
+      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} labelsPerPage={labelsPerPage} onRestore={(restoredPages, n) => {
         if (!Array.isArray(restoredPages) || !restoredPages.length) { toast.error('Invalid history data'); return; }
         const loadedPages = restoredPages.map(page =>
-          Array.from({ length: 12 }, (_, i) => ({ ...emptyLabel(), ...((Array.isArray(page) ? page[i] : null) || {}) }))
+          Array.from({ length: labelsPerPage }, (_, i) => ({ ...emptyLabel(), ...((Array.isArray(page) ? page[i] : null) || {}) }))
         );
         setPages(loadedPages);
         setCurrentPage(0);

@@ -17,6 +17,7 @@
 import { useState, useEffect, memo } from 'react';
 import QRCode from 'qrcode';
 import { generateMfgDate } from '../utils/mfgDate';
+import { getLayout, DEFAULT_LAYOUT } from '../utils/layoutConfig';
 
 const LABEL_FONT_FAMILY = 'Arial, Helvetica, sans-serif';
 const MM_TO_PX = 96 / 25.4;
@@ -121,7 +122,7 @@ function buildTextLines(text, { fontSizePt, fontWeight, maxWidthMm, maxLines }) 
   return lines.slice(0, maxLines);
 }
 
-const LabelCell = memo(function LabelCell({ label }) {
+const LabelCell = memo(function LabelCell({ label, compact = false }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
@@ -137,7 +138,7 @@ const LabelCell = memo(function LabelCell({ label }) {
     ? `/api/image-proxy?url=${encodeURIComponent(productImage)}`
     : productImage;
   const qrDataUrl = useQRCode(productUrl);
-  const s = (pt) => `${pt}pt`;
+  const s = (pt) => `${compact ? pt * 0.78 : pt}pt`;
   const B = '0.3mm solid #000';
   const BD = '0.2mm solid #000';
   const [logoError, setLogoError] = useState(false);
@@ -146,16 +147,16 @@ const LabelCell = memo(function LabelCell({ label }) {
   const isEmpty = !code && !product && !price && !description;
   const hasProductImg = productImage && !imgError;
   const productLines = buildTextLines(product, {
-    fontSizePt: 4.5,
+    fontSizePt: compact ? 3.5 : 4.5,
     fontWeight: 900,
-    maxWidthMm: hasProductImg ? 73 : 84,
+    maxWidthMm: hasProductImg ? (compact ? 38 : 73) : (compact ? 48 : 84),
     maxLines: 2,
   });
   const descriptionLines = buildTextLines(description, {
-    fontSizePt: 3.5,
+    fontSizePt: compact ? 2.8 : 3.5,
     fontWeight: 600,
-    maxWidthMm: hasProductImg ? 76 : 88,
-    maxLines: 3,
+    maxWidthMm: hasProductImg ? (compact ? 40 : 76) : (compact ? 50 : 88),
+    maxLines: compact ? 2 : 3,
   });
 
   return (
@@ -170,7 +171,7 @@ const LabelCell = memo(function LabelCell({ label }) {
 
       {/* ── LEFT VERTICAL STRIP — Model Number ── */}
       <div style={{
-        width: '5.5mm', flexShrink: 0, borderRight: B,
+        width: compact ? '4mm' : '5.5mm', flexShrink: 0, borderRight: B,
         background: '#fff', color: '#000',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -188,22 +189,22 @@ const LabelCell = memo(function LabelCell({ label }) {
       <div style={{
         flex: '1 1 auto',
         display: 'grid',
-        gridTemplateRows: '8.5mm auto 1fr 7mm',
+        gridTemplateRows: compact ? '6.5mm auto 1fr 5.5mm' : '8.5mm auto 1fr 7mm',
         minWidth: 0,
       }}>
 
         {/* ROW 1: Brand Logo + QR Code ── */}
         <div style={{
           display: 'flex', alignItems: 'center',
-          padding: '0.5mm 1.2mm',
-          gap: '1.5mm',
+          padding: compact ? '0.3mm 0.8mm' : '0.5mm 1.2mm',
+          gap: compact ? '1mm' : '1.5mm',
         }}>
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             {logoUrl && !logoError ? (
               <img src={logoUrl} alt={brand} crossOrigin="anonymous"
                 onError={() => setLogoError(true)}
                 style={{
-                  maxHeight: '7.5mm', maxWidth: '28mm',
+                  maxHeight: compact ? '5.5mm' : '7.5mm', maxWidth: compact ? '18mm' : '28mm',
                   objectFit: 'contain',
                   filter: 'grayscale(100%) contrast(5) brightness(0)',
                 }} />
@@ -218,7 +219,7 @@ const LabelCell = memo(function LabelCell({ label }) {
           </div>
           {qrDataUrl && (
             <img src={qrDataUrl} alt="QR" style={{
-              width: '7mm', height: '7mm',
+              width: compact ? '5.5mm' : '7mm', height: compact ? '5.5mm' : '7mm',
               objectFit: 'contain', flexShrink: 0,
             }} />
           )}
@@ -227,7 +228,7 @@ const LabelCell = memo(function LabelCell({ label }) {
         {/* ROW 2: Size / Qty / MRP Table ── */}
         <div style={{
           borderTop: BD,
-          padding: '0.3mm 1mm',
+          padding: compact ? '0.2mm 0.6mm' : '0.3mm 1mm',
         }}>
           <table style={{
             width: '100%', borderCollapse: 'collapse',
@@ -235,19 +236,19 @@ const LabelCell = memo(function LabelCell({ label }) {
           }}>
             <thead>
               <tr>
-                <th style={{ borderBottom: BD, borderRight: BD, padding: '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Size</th>
-                <th style={{ borderBottom: BD, borderRight: BD, padding: '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Qty</th>
-                <th style={{ borderBottom: BD, padding: '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>MRP (Per Piece)</th>
+                <th style={{ borderBottom: BD, borderRight: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Size</th>
+                <th style={{ borderBottom: BD, borderRight: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Qty</th>
+                <th style={{ borderBottom: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>{compact ? 'MRP' : 'MRP (Per Piece)'}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{size || '—'}</td>
-                <td style={{ borderRight: BD, padding: '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{qty || '—'}</td>
-                <td style={{ padding: '0.5mm 0.8mm', fontWeight: 800, fontSize: s(5), verticalAlign: 'middle', lineHeight: 1.15 }}>
+                <td style={{ borderRight: BD, padding: compact ? '0.4mm' : '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{size || '—'}</td>
+                <td style={{ borderRight: BD, padding: compact ? '0.4mm' : '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{qty || '—'}</td>
+                <td style={{ padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 800, fontSize: s(5), verticalAlign: 'middle', lineHeight: 1.15 }}>
                   {price ? `\u20B9${price.replace(/^[\s₹Rs.]+/i, '').trim()}` : '—'}
                   {price && (
-                    <div style={{ fontSize: s(2.6), fontWeight: 400, marginTop: '0.2mm', lineHeight: 1 }}>(Incl. of All Taxes)</div>
+                    <div style={{ fontSize: s(2.6), fontWeight: 400, marginTop: '0.2mm', lineHeight: 1 }}>{compact ? '(Incl. Tax)' : '(Incl. of All Taxes)'}</div>
                   )}
                 </td>
               </tr>
@@ -298,56 +299,59 @@ const LabelCell = memo(function LabelCell({ label }) {
           {/* Product Image */}
           {hasProductImg && (
             <div style={{
-              flex: '0 0 11mm', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', padding: '0.8mm',
+              flex: compact ? '0 0 8mm' : '0 0 11mm', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', padding: compact ? '0.4mm' : '0.8mm',
               borderLeft: BD,
             }}>
               <img src={productImageSrc} alt="Product"
                 onError={() => setImgError(true)}
                 style={{
-                  maxHeight: '100%', maxWidth: '10mm',
+                  maxHeight: '100%', maxWidth: compact ? '7mm' : '10mm',
                   objectFit: 'contain',
                 }} />
             </div>
           )}
         </div>
 
-        {/* ROW 4: Footer — fixed 7mm ── */}
+        {/* ROW 4: Footer ── */}
         <div style={{
           borderTop: BD,
-          padding: '0.6mm 1.2mm',
-          fontSize: s(3.2), lineHeight: 1.3, color: '#000',
+          padding: compact ? '0.3mm 0.8mm' : '0.6mm 1.2mm',
+          fontSize: s(3.2), lineHeight: compact ? 1.2 : 1.3, color: '#000',
           fontWeight: 400,
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Jaquar & Co. Pvt. Ltd.</span>
+            <span>{compact ? 'Jaquar & Co.' : 'Jaquar & Co. Pvt. Ltd.'}</span>
             <span>Made in India</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: s(2.8), color: '#333' }}>
             <span>Mfg: {mfgDate || '___/____'}</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
-              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+              {!compact && <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
                 <rect x="2" y="4" width="20" height="16" rx="2"/>
                 <path d="M22 4L12 13 2 4"/>
-              </svg>
+              </svg>}
               service@jaquar.com
             </span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: s(2.8), color: '#333' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
-              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.35a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0122 16.92z"/>
-              </svg>
-              1800-102-9900
-            </span>
-          </div>
+          {!compact && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: s(2.8), color: '#333' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
+                <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.35a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0122 16.92z"/>
+                </svg>
+                1800-102-9900
+              </span>
+            </div>
+          )}
         </div>
 
       </div>
     </div>
   );
 }, (prev, next) =>
+  prev.compact === next.compact &&
   prev.label.code === next.label.code &&
   prev.label.product === next.label.product &&
   prev.label.description === next.label.description &&
@@ -364,18 +368,19 @@ const LabelCell = memo(function LabelCell({ label }) {
 // Bug #4 fix: proper default label so .trim() never hits undefined
 const defaultLabel = { product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: '' };
 
-export default function LabelSheet({ labels }) {
-  const safeLabels = Array.from({ length: 12 }, (_, i) => {
+export default function LabelSheet({ labels, layout: layoutId }) {
+  const layout = getLayout(layoutId);
+  const safeLabels = Array.from({ length: layout.count }, (_, i) => {
     const l = { ...defaultLabel, ...(labels[i] || {}) };
     if (!l.mfgDate) l.mfgDate = generateMfgDate();
     return l;
   });
   return (
     <div
-      className="sheet print-sheet"
+      className={`sheet ${layout.cssClass} print-sheet`}
     >
       {safeLabels.map((label, i) => (
-        <LabelCell key={i} label={label} />
+        <LabelCell key={i} label={label} compact={layoutId === 'layout18'} />
       ))}
     </div>
   );
