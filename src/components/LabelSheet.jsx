@@ -122,7 +122,7 @@ function buildTextLines(text, { fontSizePt, fontWeight, maxWidthMm, maxLines }) 
   return lines.slice(0, maxLines);
 }
 
-const LabelCell = memo(function LabelCell({ label, compact = false }) {
+const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow = true }) {
   const brand = label.manufacturer?.trim() || '';
   const code = label.code?.trim() || '';
   const product = label.product?.trim() || '';
@@ -163,6 +163,7 @@ const LabelCell = memo(function LabelCell({ label, compact = false }) {
     <div style={{
       width: '100%', height: '100%',
       border: B, boxSizing: 'border-box',
+      borderTop: (!isFirstRow && compact) ? 'none' : B,
       fontFamily: LABEL_FONT_FAMILY,
       color: '#000', display: 'flex',
       background: '#fff',
@@ -352,6 +353,7 @@ const LabelCell = memo(function LabelCell({ label, compact = false }) {
   );
 }, (prev, next) =>
   prev.compact === next.compact &&
+  prev.isFirstRow === next.isFirstRow &&
   prev.label.code === next.label.code &&
   prev.label.product === next.label.product &&
   prev.label.description === next.label.description &&
@@ -380,7 +382,7 @@ export default function LabelSheet({ labels, layout: layoutId }) {
       className={`sheet ${layout.cssClass} print-sheet`}
     >
       {safeLabels.map((label, i) => (
-        <LabelCell key={i} label={label} compact={layoutId === 'layout18'} />
+        <LabelCell key={i} label={label} compact={layoutId === 'layout18'} isFirstRow={Math.floor(i / layout.cols) === 0} />
       ))}
     </div>
   );
