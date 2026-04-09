@@ -6,7 +6,7 @@
  * Only allows jaquar.com image URLs to prevent abuse.
  */
 module.exports = async (req, res) => {
-  const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://printer-image-generator.vercel.app';
+  const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://saglps.vercel.app';
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

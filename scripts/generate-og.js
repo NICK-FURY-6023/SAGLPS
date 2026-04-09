@@ -279,7 +279,7 @@ ctx.fillText('Shree Ganpati Agency — Label Print System v2.0', 52, H - 15);
 ctx.fillStyle = '#1e293b';
 ctx.font = '11px Arial';
 ctx.textAlign = 'right';
-ctx.fillText('printer-image-generator.vercel.app', W - 52, H - 15);
+ctx.fillText('saglps.vercel.app', W - 52, H - 15);
 
 // Save
 const outPath = path.join(__dirname, '../public/og-image.png');

@@ -7,7 +7,7 @@ function verifyToken(req) {
   return jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
 }
 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://printer-image-generator.vercel.app';
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://saglps.vercel.app';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
