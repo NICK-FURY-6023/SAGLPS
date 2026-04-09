@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
-import { getTemplates } from '../services/api';
+import { getTemplates, getDraft, saveDraftToCloud, getHistory as fetchHistory, addHistoryEntry, deleteHistoryEntry as apiDeleteHistoryEntry, clearHistory as apiClearHistory } from '../services/api';
 import { getSupabaseClient } from '../services/supabase';
 import { generateMfgDate } from '../utils/mfgDate';
 import { LAYOUTS, DEFAULT_LAYOUT, getLayout, getLabelsPerPage } from '../utils/layoutConfig';
@@ -16,8 +16,6 @@ const emptyLabel = () => ({
 });
 const createInitialLabels = (count = 12) => Array.from({ length: count }, emptyLabel);
 const initialLabels = () => createInitialLabels(12);
-const DRAFT_KEY   = 'ganpati_draft';
-const HISTORY_KEY = 'ganpati_history';
 
 const CSV_COLUMNS = ['manufacturer', 'logoUrl', 'code', 'product', 'description', 'price', 'productUrl', 'productImage', 'size', 'qty', 'mfgDate'];
 const SAMPLE_CSV = `manufacturer,logoUrl,code,product,description,price
@@ -219,27 +217,35 @@ function CSVImportModal({ onImport, onClose, labelsPerPage = 12 }) {
 /* ── Print History Modal ──────────────────────────────────────────── */
 function HistoryModal({ onClose, onRestore, labelsPerPage = 12 }) {
   const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      setHistory(h);
-    } catch { setHistory([]); }
+    fetchHistory()
+      .then(data => setHistory(data || []))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const clearHistory = () => {
+  const handleClear = async () => {
     if (!confirm('Delete all history? This cannot be undone.')) return;
-    localStorage.removeItem(HISTORY_KEY);
-    setHistory([]);
-    toast.success('History cleared');
+    try {
+      await apiClearHistory();
+      setHistory([]);
+      toast.success('History cleared');
+    } catch {
+      toast.error('Failed to clear history');
+    }
   };
 
-  const deleteEntry = (idx) => {
+  const handleDelete = async (entry, idx) => {
     if (!confirm('Delete this history entry?')) return;
-    const updated = history.filter((_, i) => i !== idx);
-    setHistory(updated);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-    toast.success('Entry deleted');
+    try {
+      await apiDeleteHistoryEntry(entry.id);
+      setHistory(prev => prev.filter((_, i) => i !== idx));
+      toast.success('Entry deleted');
+    } catch {
+      toast.error('Failed to delete entry');
+    }
   };
 
   const fmtDate = (iso) => {
@@ -260,12 +266,14 @@ function HistoryModal({ onClose, onRestore, labelsPerPage = 12 }) {
             <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>Last 30 print / save operations</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {history.length > 0 && <Btn onClick={clearHistory} variant="danger" style={{ fontSize: 11, padding: '5px 10px' }}>Clear All</Btn>}
+            {history.length > 0 && <Btn onClick={handleClear} variant="danger" style={{ fontSize: 11, padding: '5px 10px' }}>Clear All</Btn>}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>×</button>
           </div>
         </div>
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {history.length === 0 ? (
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 13 }}>Loading history…</div>
+          ) : history.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#334155' }}>
               <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.3 }}>
                 <Icon d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" size={40} />
@@ -281,25 +289,25 @@ function HistoryModal({ onClose, onRestore, labelsPerPage = 12 }) {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginBottom: 3 }}>
-                    {h.templateName || h.autoName || 'Untitled'}
+                    {h.template_name || h.auto_name || h.templateName || h.autoName || 'Untitled'}
                     <span style={{ fontSize: 10, fontWeight: 500, color: '#94a3b8', marginLeft: 8, textTransform: 'capitalize' }}>{h.action}</span>
                   </div>
                   <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>
-                    {h.filledCount}/{(h.pageCount || 1) * (h.labelsPerPage || labelsPerPage)} labels{h.pageCount > 1 ? ` · ${h.pageCount} pages` : ''}{h.copies > 1 ? ` · ${h.copies} copies` : ''}
+                    {h.filled_count || h.filledCount || 0}/{(h.page_count || h.pageCount || 1) * (h.labels_per_page || h.labelsPerPage || labelsPerPage)} labels{(h.page_count || h.pageCount || 1) > 1 ? ` · ${h.page_count || h.pageCount} pages` : ''}{(h.copies || 1) > 1 ? ` · ${h.copies} copies` : ''}
                   </div>
                   <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>{fmtDate(h.time)}</span>
-                    <span>{fmtTime(h.time)}</span>
+                    <span>{fmtDate(h.created_at || h.time)}</span>
+                    <span>{fmtTime(h.created_at || h.time)}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   {(h.labels || h.pages) && (
-                    <Btn onClick={() => { onRestore(h.pages || [h.labels], h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
+                    <Btn onClick={() => { onRestore(h.pages || [h.labels], h.template_name || h.templateName); onClose(); }} variant="ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
                       Restore
                     </Btn>
                   )}
                   <button
-                    onClick={() => deleteEntry(i)}
+                    onClick={() => handleDelete(h, i)}
                     title="Delete this entry"
                     style={{ background: 'none', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', cursor: 'pointer', padding: '4px 8px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
@@ -338,23 +346,20 @@ function generateAutoName(pages) {
   return name;
 }
 
-/* ── Log to history ───────────────────────────────────────────────── */
+/* ── Log to history (cloud) ───────────────────────────────────────── */
 function logHistory(action, templateName, filledCount, pages, copies = 1, labelsPerPage = 12) {
-  try {
-    const autoName = generateAutoName(pages);
-    const displayName = templateName || autoName;
-    const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    const entry = {
-      id: Date.now(), action, templateName: displayName, autoName, filledCount, copies,
-      pageCount: pages.length, labelsPerPage,
-      time: new Date().toISOString(),
-      pages: JSON.parse(JSON.stringify(pages)),
-      // Keep backward compat: labels = first page
-      labels: JSON.parse(JSON.stringify(pages[0] || [])),
-    };
-    const updated = [entry, ...existing].slice(0, 30);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-  } catch { /* ignore */ }
+  const autoName = generateAutoName(pages);
+  const displayName = templateName || autoName;
+  addHistoryEntry({
+    action,
+    template_name: displayName,
+    auto_name: autoName,
+    filled_count: filledCount,
+    copies,
+    page_count: pages.length,
+    labels_per_page: labelsPerPage,
+    pages: JSON.parse(JSON.stringify(pages)),
+  }).catch(() => { /* silent — don't block UI */ });
 }
 
 /* ── Keyboard Shortcuts Modal ──────────────────────────────────────── */
@@ -500,49 +505,13 @@ export default function Dashboard() {
   }, []);
 
   // ── Layout state ──
-  const [layoutId, setLayoutId] = useState(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.layoutId && LAYOUTS[parsed.layoutId]) return parsed.layoutId;
-      }
-    } catch { /* ignore */ }
-    return DEFAULT_LAYOUT;
-  });
+  const [layoutId, setLayoutId] = useState(DEFAULT_LAYOUT);
   const labelsPerPage = getLabelsPerPage(layoutId);
 
   // ── Multi-page state ──
-  const [pages, setPages] = useState(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const savedLayout = (parsed.layoutId && LAYOUTS[parsed.layoutId]) ? parsed.layoutId : DEFAULT_LAYOUT;
-        const count = getLabelsPerPage(savedLayout);
-        // New format: { pages: [[...], [...]] }
-        if (parsed.pages && Array.isArray(parsed.pages) && parsed.pages.length) {
-          return parsed.pages.map(page =>
-            Array.from({ length: count }, (_, i) => {
-              const l = { ...emptyLabel(), ...(page[i] || {}) };
-              if (!l.mfgDate) l.mfgDate = generateMfgDate();
-              return l;
-            })
-          );
-        }
-        // Old format: flat array of 12
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return [Array.from({ length: count }, (_, i) => {
-            const l = { ...emptyLabel(), ...(parsed[i] || {}) };
-            if (!l.mfgDate) l.mfgDate = generateMfgDate();
-            return l;
-          })];
-        }
-      }
-    } catch { /* ignore */ }
-    return [createInitialLabels(getLabelsPerPage(DEFAULT_LAYOUT))];
-  });
+  const [pages, setPages] = useState(() => [createInitialLabels(getLabelsPerPage(DEFAULT_LAYOUT))]);
   const [currentPage, setCurrentPage] = useState(0);
+  const [draftLoading, setDraftLoading] = useState(true);
   const pagesRef = useRef(pages);
   useEffect(() => { pagesRef.current = pages; }, [pages]);
 
@@ -649,97 +618,68 @@ export default function Dashboard() {
   const [showTemplatesGallery, setShowTemplatesGallery] = useState(false);
   const [copies, setCopies] = useState(1);
   const autoSaveTimer = useRef(null);
+  const layoutIdRef = useRef(layoutId);
+  useEffect(() => { layoutIdRef.current = layoutId; }, [layoutId]);
 
-  // Auto-save draft (debounced on change + periodic every 30s)
+  // ── Load draft from cloud on mount ──
+  const draftLoadedRef = useRef(false);
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+    getDraft()
+      .then(data => {
+        if (data && data.pages && Array.isArray(data.pages) && data.pages.length) {
+          const savedLayout = (data.layoutId && LAYOUTS[data.layoutId]) ? data.layoutId : DEFAULT_LAYOUT;
+          const count = getLabelsPerPage(savedLayout);
+          const loaded = data.pages.map(page =>
+            Array.from({ length: count }, (_, i) => {
+              const l = { ...emptyLabel(), ...(page[i] || {}) };
+              if (!l.mfgDate) l.mfgDate = generateMfgDate();
+              return l;
+            })
+          );
+          setLayoutId(savedLayout);
+          setPages(loaded);
+        }
+      })
+      .catch(() => { /* cloud unavailable — start with empty */ })
+      .finally(() => setDraftLoading(false));
+  }, []);
+
+  // ── Auto-save draft to cloud (debounced) ──
   const autoFadeTimer = useRef(null);
-  const periodicSaveTimer = useRef(null);
   const saveDraft = useCallback(() => {
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages, layoutId })); }
-    catch (err) {
-      if (err.name === 'QuotaExceededError') toast.error('Storage full — draft not saved!');
-    }
+    saveDraftToCloud(pages, layoutId).catch(() => { /* silent */ });
     setAutoSaved(true);
     clearTimeout(autoFadeTimer.current);
     autoFadeTimer.current = setTimeout(() => setAutoSaved(false), 2000);
   }, [pages, layoutId]);
 
   useEffect(() => {
+    if (draftLoading) return;
     clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(saveDraft, 1200);
+    autoSaveTimer.current = setTimeout(saveDraft, 2000);
     return () => {
       clearTimeout(autoSaveTimer.current);
       clearTimeout(autoFadeTimer.current);
     };
-  }, [pages, saveDraft]);
+  }, [pages, layoutId, saveDraft, draftLoading]);
 
-  // Periodic auto-save every 30s
-  useEffect(() => {
-    periodicSaveTimer.current = setInterval(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ pages, layoutId })); } catch {}
-    }, 30000);
-    return () => clearInterval(periodicSaveTimer.current);
-  }, [pages]);
-
-  // ── Cloud sync via Supabase Realtime (WebSocket) ──
-  const cloudDraftId = useRef(null);
+  // ── Realtime sync via Supabase WebSocket ──
   const supabase = useMemo(() => getSupabaseClient(), []);
 
   useEffect(() => {
     if (!supabase || !token) return;
-
-    // 1. Find or load existing cloud draft
-    supabase.from('templates').select('*').eq('name', '__auto_draft__').maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          cloudDraftId.current = data.id;
-          const hasLocal = pagesRef.current.some(p => p.some(l => l.product?.trim() || l.code?.trim()));
-          if (!hasLocal && data.label_data?.pages?.length) {
-            const loaded = data.label_data.pages.map(page =>
-              Array.from({ length: labelsPerPage }, (_, i) => ({ ...emptyLabel(), ...(page[i] || {}) }))
-            );
-            if (loaded.some(p => p.some(l => l.product?.trim() || l.code?.trim()))) {
-              setPages(loaded);
-              toast.success('Loaded draft from cloud');
-            }
-          }
-        }
-      })
-      .catch(() => {});
-
-    // 2. Subscribe to real-time template changes via WebSocket
     const channel = supabase
-      .channel('templates-sync')
+      .channel('drafts-sync')
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'templates',
-        filter: 'name=eq.__auto_draft__',
-      }, (payload) => {
-        if (payload.new?.id && payload.new.id !== cloudDraftId.current) {
-          toast('Draft updated from another device — open Load to restore', { duration: 5000 });
-        }
+        event: 'UPDATE', schema: 'public', table: 'drafts',
+      }, () => {
+        // Another device updated the draft
+        toast('Draft updated from another device — reload to see changes', { duration: 5000 });
       })
       .subscribe();
-
-    // 3. Auto-save draft every 30s directly via Supabase (WebSocket-backed)
-    const timer = setInterval(async () => {
-      const current = pagesRef.current;
-      const hasContent = current.some(p => p.some(l => l.product?.trim() || l.code?.trim()));
-      if (!hasContent) return;
-      try {
-        const data = { pages: current };
-        if (cloudDraftId.current) {
-          await supabase.from('templates').update({ label_data: data }).eq('id', cloudDraftId.current);
-        } else {
-          const { data: result } = await supabase.from('templates')
-            .insert([{ name: '__auto_draft__', label_data: data }]).select().single();
-          if (result?.id) cloudDraftId.current = result.id;
-        }
-      } catch { /* silent — local save is backup */ }
-    }, 30000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(timer);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [supabase, token]);
 
   // These must be defined before the keyboard handler useEffect that references them
@@ -819,9 +759,9 @@ export default function Dashboard() {
     setPages([createInitialLabels(labelsPerPage)]);
     setCurrentPage(0);
     setCurrentTemplateName('');
-    localStorage.removeItem(DRAFT_KEY);
+    saveDraftToCloud([createInitialLabels(labelsPerPage)], layoutId).catch(() => {});
     toast('Labels cleared');
-  }, [labelsPerPage]);
+  }, [labelsPerPage, layoutId]);
 
   const handleCSVImport = useCallback((newLabels) => {
     setLabels(newLabels);
@@ -924,6 +864,13 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col no-print" style={{ background: '#0f172a', color: '#f1f5f9' }}>
+      {draftLoading && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <div style={{ width: 36, height: 36, border: '3px solid #334155', borderTopColor: '#f97316', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Loading from cloud…</div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
       {/* ─── Navbar ─── */}
       <nav style={{ background: 'linear-gradient(135deg,#ea580c 0%,#c2410c 50%,#9a3412 100%)', boxShadow: '0 4px 20px rgba(234,88,12,0.4), 0 8px 32px rgba(0,0,0,0.3)', flexShrink: 0, position: 'relative', zIndex: 10 }}>
         {/* Top bar — Brand + Status + Quick actions */}
@@ -951,7 +898,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ fontSize: 10, opacity: autoSaved ? 1 : 0, transition: 'opacity 0.3s', color: '#fde68a', display: 'flex', alignItems: 'center', gap: 3 }}>
               <Icon d="M20 6 9 17l-5-5" sw={2.5} size={11} />
-              Saved
+              Cloud saved
             </div>
             <div style={{ padding: '2px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', fontSize: 10, fontWeight: 600 }}>
               {totalFilled}/{pages.length * labelsPerPage}

@@ -30,4 +30,24 @@ export const updateTemplate = (id, name, labelData) =>
 export const deleteTemplate = (id) =>
   api.delete(`/api/templates/${id}`).then((r) => r.data);
 
+// ── Drafts ──
+export const getDraft = () =>
+  api.get('/api/drafts').then((r) => r.data);
+
+export const saveDraftToCloud = (pages, layoutId) =>
+  api.put('/api/drafts', { pages, layoutId }).then((r) => r.data);
+
+// ── History ──
+export const getHistory = () =>
+  api.get('/api/history').then((r) => r.data);
+
+export const addHistoryEntry = (entry) =>
+  api.post('/api/history', entry).then((r) => r.data);
+
+export const deleteHistoryEntry = (id) =>
+  api.delete(`/api/history/${id}`).then((r) => r.data);
+
+export const clearHistory = () =>
+  api.delete('/api/history').then((r) => r.data);
+
 export default api;
