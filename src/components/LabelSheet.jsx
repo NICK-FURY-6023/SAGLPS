@@ -154,8 +154,6 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
     : productImage;
   const qrDataUrl = useQRCode(productUrl);
   const s = (pt) => `${compact ? pt * 0.78 : pt}pt`;
-  const B = '0.25mm solid #1a1a1a';
-  const BD = '0.15mm solid #333';
   const [imgError, setImgError] = useState(false);
 
   // Custom font sizes from label data
@@ -163,7 +161,6 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
   const productFontSize = fontSizes.product || (compact ? 3.5 : 4.5);
   const descFontSize = fontSizes.description || (compact ? 2.8 : 3.5);
   const codeFontSize = fontSizes.code || 5;
-  const priceFontSize = fontSizes.price || 5;
 
   const isEmpty = !code && !product && !price && !description;
   const hasProductImg = productImage && !imgError;
@@ -183,82 +180,121 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
   return (
     <div style={{
       width: '100%', height: '100%',
-      border: B, boxSizing: 'border-box',
-      borderTop: (!isFirstRow && compact) ? 'none' : B,
+      border: '0.25mm solid #aaa', boxSizing: 'border-box',
+      borderTop: (!isFirstRow && compact) ? 'none' : '0.25mm solid #aaa',
       fontFamily: LABEL_FONT_FAMILY,
       color: '#111', display: 'flex',
-      background: '#fff',
+      background: '#f0f0f0',
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
-      boxShadow: 'inset 0 0 0.1mm #f5f5f5',
     }}>
 
-      {/* ── LEFT VERTICAL STRIP — Model Number ── */}
+      {/* LEFT VERTICAL STRIP - Model Number */}
       <div style={{
-        width: compact ? '4mm' : '5.5mm', flexShrink: 0, borderRight: B,
-        background: '#fafafa', color: '#111',
+        width: compact ? '4mm' : '4.5mm', flexShrink: 0,
+        borderRight: '0.2mm solid #888',
+        background: '#f0f0f0', color: '#111',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{
-          transform: 'rotate(-90deg)',
+          writingMode: 'vertical-rl',
+          transform: 'rotate(180deg)',
           whiteSpace: 'nowrap',
-          fontSize: s(codeFontSize), fontWeight: 900,
-          letterSpacing: '0.05em',
+          fontSize: s(4.5), fontWeight: 900,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
       </div>
 
-      {/* ── MAIN CONTENT — CSS Grid (html-to-image supports it natively) ── */}
+      {/* MAIN CONTENT */}
       <div style={{
         flex: '1 1 auto',
-        display: 'grid',
-        gridTemplateRows: compact ? '6.5mm auto 1fr 5.5mm' : '8.5mm auto 1fr 7mm',
+        display: 'flex', flexDirection: 'column',
+        padding: compact ? '0.5mm 0.8mm' : '0.8mm 1mm',
         minWidth: 0,
       }}>
 
-        {/* ROW 1: Brand Logo + QR Code ── */}
+        {/* TOP ROW: Logo + QR + MRP Table */}
         <div style={{
-          display: 'flex', alignItems: 'center',
-          padding: compact ? '0.3mm 0.8mm' : '0.5mm 1.2mm',
-          gap: compact ? '1mm' : '1.5mm',
-          borderBottom: '0.1mm solid #e5e5e5',
+          display: 'flex', alignItems: 'flex-start',
+          gap: compact ? '0.8mm' : '1mm',
+          marginBottom: compact ? '0.5mm' : '0.8mm',
         }}>
+          {/* Jaquar Logo */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             <JAQUAR_LOGO />
           </div>
+          {/* QR Code */}
           {qrDataUrl && (
-            <img src={qrDataUrl} alt="QR" style={{
-              width: compact ? '5.5mm' : '7mm', height: compact ? '5.5mm' : '7mm',
-              objectFit: 'contain', flexShrink: 0,
-              opacity: 0.9,
-            }} />
+            <div style={{
+              flexShrink: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center',
+            }}>
+              <img src={qrDataUrl} alt="QR" style={{
+                width: compact ? '5mm' : '8mm', height: compact ? '5mm' : '8mm',
+                objectFit: 'contain', flexShrink: 0,
+                border: '0.1mm solid #333',
+                background: '#fff',
+              }} />
+              {productUrl && (
+                <span style={{
+                  fontSize: s(2.5), fontWeight: 700, marginTop: '0.2mm',
+                  letterSpacing: '0.05em',
+                }}>
+                  {productUrl.slice(0, 20)}
+                </span>
+              )}
+            </div>
           )}
-        </div>
-
-        {/* ROW 2: Size / Qty / MRP Table ── */}
-        <div style={{
-          borderTop: BD,
-          padding: compact ? '0.2mm 0.6mm' : '0.3mm 1mm',
-        }}>
+          {/* MRP Table */}
           <table style={{
-            width: '100%', borderCollapse: 'collapse',
-            textAlign: 'center',
+            flex: 1, borderCollapse: 'collapse',
+            alignSelf: 'flex-start',
+            border: '1.5px solid #333',
           }}>
             <thead>
               <tr>
-                <th style={{ borderBottom: BD, borderRight: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Size</th>
-                <th style={{ borderBottom: BD, borderRight: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>Qty</th>
-                <th style={{ borderBottom: BD, padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 900, fontSize: s(4.5), verticalAlign: 'middle' }}>{compact ? 'MRP' : 'MRP (Per Piece)'}</th>
+                <th style={{
+                  borderBottom: '1.5px solid #333', borderRight: '1.5px solid #333',
+                  padding: compact ? '0.3mm 0.4mm' : '0.3mm 0.6mm',
+                  fontWeight: 900, fontSize: s(3.5), background: '#f0f0f0',
+                }}>Size</th>
+                <th style={{
+                  borderBottom: '1.5px solid #333', borderRight: '1.5px solid #333',
+                  padding: compact ? '0.3mm 0.4mm' : '0.3mm 0.6mm',
+                  fontWeight: 900, fontSize: s(3.5), background: '#f0f0f0',
+                }}>Qty</th>
+                <th style={{
+                  borderBottom: '1.5px solid #333',
+                  padding: compact ? '0.3mm 0.4mm' : '0.3mm 0.6mm',
+                  fontWeight: 900, fontSize: s(3.5), background: '#f0f0f0',
+                }}>MRP</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{ borderRight: BD, padding: compact ? '0.4mm' : '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{size || '—'}</td>
-                <td style={{ borderRight: BD, padding: compact ? '0.4mm' : '0.8mm', fontSize: s(5), verticalAlign: 'middle' }}>{qty || '—'}</td>
-                <td style={{ padding: compact ? '0.3mm 0.4mm' : '0.5mm 0.8mm', fontWeight: 800, fontSize: s(5), verticalAlign: 'middle', lineHeight: 1.15 }}>
-                  {price ? `\u20B9${price.replace(/^[\s₹Rs.]+/i, '').trim()}` : '—'}
+                <td style={{
+                  borderRight: '1.5px solid #333',
+                  padding: compact ? '0.4mm' : '0.4mm',
+                  fontSize: s(4), fontWeight: 600, background: '#f8f8f8',
+                }}>{size || '—'}</td>
+                <td style={{
+                  borderRight: '1.5px solid #333',
+                  padding: compact ? '0.4mm' : '0.4mm',
+                  fontSize: s(4), fontWeight: 600, background: '#f8f8f8',
+                }}>{qty || '—'}</td>
+                <td style={{
+                  padding: compact ? '0.3mm 0.4mm' : '0.3mm 0.6mm',
+                  fontWeight: 900, fontSize: s(6), background: '#f8f8f8',
+                  lineHeight: 1.1,
+                }}>
+                  {price ? `₹${price.replace(/^[\s₹Rs.]+/i, '').trim()}` : '—'}
                   {price && (
-                    <div style={{ fontSize: s(2.6), fontWeight: 400, marginTop: '0.2mm', lineHeight: 1 }}>{compact ? '(Incl. Tax)' : '(Incl. of All Taxes)'}</div>
+                    <div style={{
+                      fontSize: s(2.5), fontWeight: 600, marginTop: '0.2mm',
+                      color: '#333',
+                    }}>(Incl. Tax)</div>
                   )}
                 </td>
               </tr>
@@ -266,95 +302,96 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
           </table>
         </div>
 
-        {/* ROW 3: Product Name + Description + Image ── */}
+        {/* PRODUCT DESCRIPTION */}
         <div style={{
-          borderTop: BD,
-          display: 'flex',
-          overflow: 'hidden',
-          minHeight: 0,
+          marginBottom: compact ? '0.8mm' : '1mm',
         }}>
-          {/* Text content */}
-          <div style={{
-            flex: '1 1 auto', display: 'flex', flexDirection: 'column',
-            justifyContent: 'flex-start', padding: '1.6mm 1.8mm 1mm',
-            minWidth: 0,
-          }}>
-            {productLines.length > 0 && (
-              <div style={{
-                fontSize: s(4.5), fontWeight: 900,
-                textTransform: 'uppercase', lineHeight: 1.28,
-              }}>
-                {productLines.map((line, index) => (
-                  <div key={`product-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-            )}
-            {(descriptionLines.length > 0 || (!product && !isEmpty)) && (
-              <div style={{
-                fontSize: s(3.5), fontWeight: 600,
-                lineHeight: 1.25, textTransform: 'uppercase',
-                marginTop: productLines.length > 0 ? '0.8mm' : 0,
-              }}>
-                {descriptionLines.map((line, index) => (
-                  <div key={`description-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Product Image */}
-          {hasProductImg && (
+          {productLines.length > 0 && (
             <div style={{
-              flex: compact ? '0 0 8mm' : '0 0 11mm', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', padding: compact ? '0.4mm' : '0.8mm',
-              borderLeft: BD,
+              fontSize: s(4.5), fontWeight: 900,
+              textTransform: 'uppercase', lineHeight: 1.28,
+              marginBottom: '0.5mm',
             }}>
-              <img src={productImageSrc} alt="Product"
-                onError={() => setImgError(true)}
-                style={{
-                  maxHeight: '100%', maxWidth: compact ? '7mm' : '10mm',
-                  objectFit: 'contain',
-                }} />
+              {productLines.map((line, index) => (
+                <div key={`product-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
+          {(descriptionLines.length > 0 || (!product && !isEmpty)) && (
+            <div style={{
+              fontSize: s(3.5), fontWeight: 600,
+              lineHeight: 1.25, textTransform: 'uppercase',
+            }}>
+              {descriptionLines.map((line, index) => (
+                <div key={`description-${index}`} style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                  {line}
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* ROW 4: Footer ── */}
+        {/* MFG TABLE */}
         <div style={{
-          borderTop: BD,
-          padding: compact ? '0.3mm 0.8mm' : '0.6mm 1.2mm',
-          fontSize: s(3.2), lineHeight: compact ? 1.2 : 1.3, color: '#000',
-          fontWeight: 400,
-          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          borderTop: '0.1mm solid #aaa',
+          padding: compact ? '0.3mm 0' : '0.4mm 0',
+          marginBottom: compact ? '0.4mm' : '0.5mm',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>{compact ? 'Jaquar & Co.' : 'Jaquar & Co. Pvt. Ltd.'}</span>
-            <span>Made in India</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: s(2.8), color: '#333' }}>
-            <span>Mfg: {mfgDate || '___/____'}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
-              {!compact && <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="M22 4L12 13 2 4"/>
-              </svg>}
-              service@jaquar.com
-            </span>
-          </div>
-          {!compact && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: s(2.8), color: '#333' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
-                <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}>
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.35a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.75.32 1.54.55 2.35.68A2 2 0 0122 16.92z"/>
-                </svg>
-                1800-102-9900
-              </span>
-            </div>
-          )}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td style={{
+                  border: '1.5px solid #444',
+                  padding: compact ? '0.3mm 0.5mm' : '0.4mm 0.8mm',
+                  fontSize: s(3.2), fontWeight: 600,
+                }}>Mfg. Month/Year : {mfgDate || '___/____'}</td>
+                <td style={{
+                  border: '1.5px solid #444',
+                  padding: compact ? '0.3mm 0.5mm' : '0.4mm 0.8mm',
+                  fontSize: s(3.2), fontWeight: 600,
+                }}>Mfd. By : JAQUAR & CO. PVT. LTD.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* COMPANY INFO */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'baseline',
+          marginBottom: compact ? '0.2mm' : '0.3mm',
+        }}>
+          <span style={{
+            fontSize: s(5), fontWeight: 900, color: '#000',
+            letterSpacing: '0.05em',
+          }}>JAQUAR & CO. PVT. LTD.</span>
+          <span style={{
+            fontSize: s(3.5), fontWeight: 900, color: '#000',
+            letterSpacing: '0.1em',
+          }}>MADE IN INDIA</span>
+        </div>
+
+        {/* ADDRESS */}
+        <div style={{
+          fontSize: s(2.5), color: '#222',
+          lineHeight: 1.5,
+          marginBottom: compact ? '0.3mm' : '0.5mm',
+        }}>
+          Rmgd. Office : E-54, Sector-7, NOIDA-201301 (UP) | Mfg. At : 36-37, Sector-6, NOIDA-201301 (UP)
+        </div>
+
+        {/* CUSTOMER CARE */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: s(2.8), color: '#222',
+        }}>
+          <span>For Complaints Contact : <span style={{ fontWeight: 600 }}>1800-121-6808</span></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3mm' }}>
+            E-mail : <span style={{ fontWeight: 600 }}>service@jaquar.com</span>
+          </span>
         </div>
 
       </div>
