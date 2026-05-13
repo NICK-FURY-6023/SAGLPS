@@ -17,10 +17,12 @@
   }
   .print-root * {
     text-decoration: none !important;
+    -webkit-font-smoothing: none !important;
+    -moz-osx-font-smoothing: unset !important;
   }
-  .print-root img {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  .print-root img, .print-root td, .print-root th {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   @page { size: A4; margin: 0; }
 }

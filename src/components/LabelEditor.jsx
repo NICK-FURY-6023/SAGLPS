@@ -4,15 +4,23 @@ import { generateMfgDate } from '../utils/mfgDate';
 const FIELDS = [
   { key: 'manufacturer', label: 'Brand Name',          placeholder: 'e.g. Jaquar',                          span: 2 },
   { key: 'logoUrl',      label: 'Brand Logo URL',      placeholder: 'Paste logo image URL',                 span: 2 },
-  { key: 'code',         label: 'Model / Product Code', placeholder: 'e.g. ALD-CHR-079N',                   span: 1, searchable: true },
-  { key: 'price',        label: 'MRP (₹ Per Piece)',   placeholder: 'e.g. 3,800.00',                        span: 1 },
+  { key: 'code',         label: 'Model / Product Code', placeholder: 'e.g. ALD-CHR-079N',                   span: 1, searchable: true, hasFontSize: true, fontSizeKey: 'code' },
+  { key: 'price',        label: 'MRP (Rs Per Piece)',   placeholder: 'e.g. 3,800.00',                        span: 1, hasFontSize: true, fontSizeKey: 'price' },
   { key: 'size',         label: 'Size',                placeholder: 'e.g. 15mm (1/2")',                      span: 1 },
   { key: 'qty',          label: 'Qty',                 placeholder: 'e.g. 1',                                span: 1 },
-  { key: 'mfgDate',      label: 'Mfg',      placeholder: 'e.g. 03/2026',                          span: 1 },
-  { key: 'product',      label: 'Product Name',        placeholder: 'e.g. Concealed Body Diverter',         span: 2, searchable: true },
-  { key: 'description',  label: 'Product Description', placeholder: 'e.g. CONCEALED BODY FOR SINGLE LEVER HIGH FLOW DIVERTER...', span: 2 },
+  { key: 'mfgDate',      label: 'Mfg',                 placeholder: 'e.g. 03/2026',                          span: 1 },
+  { key: 'product',      label: 'Product Name',        placeholder: 'e.g. Concealed Body Diverter',         span: 2, searchable: true, hasFontSize: true, fontSizeKey: 'product' },
+  { key: 'description',  label: 'Product Description', placeholder: 'e.g. CONCEALED BODY FOR SINGLE LEVER HIGH FLOW DIVERTER...', span: 2, hasFontSize: true, fontSizeKey: 'description' },
   { key: 'productImage', label: 'Product Image URL',   placeholder: 'Paste product photo URL',              span: 2 },
 ];
+
+// Default font sizes for print (in points)
+const DEFAULT_FONT_SIZES = {
+  product: 4.5,
+  description: 3.5,
+  code: 5,
+  price: 5,
+};
 
 /* ── Jaquar Search helpers ── */
 const PRODUCT_API = '/api/jaquar-product';
@@ -169,6 +177,7 @@ function JaquarSearchDropdown({ results, loading, liveLoading, onSelect, visible
 
 const emptyLabel = () => ({
   product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: generateMfgDate(),
+  fontSizes: { ...DEFAULT_FONT_SIZES },
 });
 const isFilled   = (l) => !!(l.product?.trim() || l.code?.trim() || l.price?.trim());
 
@@ -392,7 +401,7 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {FIELDS.map(({ key, label: fl, placeholder, span, section, searchable }) => (
+            {FIELDS.map(({ key, label: fl, placeholder, span, section, searchable, hasFontSize, fontSizeKey }) => (
               <React.Fragment key={key}>
                 {section && (
                   <div style={{
@@ -432,6 +441,26 @@ function LabelCard({ index, label, onChange, onFillMulti, onDuplicateToAll, onRe
                     className="input-dark"
                     style={{ fontSize: 12, padding: '7px 10px' }}
                   />
+                  {hasFontSize && fontSizeKey && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <span style={{ fontSize: 9, color: '#64748b' }}>Size:</span>
+                      <input
+                        type="range"
+                        min="2"
+                        max="9"
+                        step="0.5"
+                        value={label.fontSizes?.[fontSizeKey] || DEFAULT_FONT_SIZES[fontSizeKey]}
+                        onChange={e => {
+                          const newSize = parseFloat(e.target.value);
+                          onChange('fontSizes', { ...(label.fontSizes || DEFAULT_FONT_SIZES), [fontSizeKey]: newSize });
+                        }}
+                        style={{ flex: 1, height: 4, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: 9, color: '#94a3b8', minWidth: 24 }}>
+                        {label.fontSizes?.[fontSizeKey] || DEFAULT_FONT_SIZES[fontSizeKey]}pt
+                      </span>
+                    </div>
+                  )}
                   {key === 'price' && priceHint && (
                     <div style={{ fontSize: 9, color: '#22c55e', marginTop: 3, lineHeight: 1.3 }}>
                       {priceHint}

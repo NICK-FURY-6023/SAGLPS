@@ -13,6 +13,7 @@ import TemplateManager from './TemplateManager';
 
 const emptyLabel = () => ({
   product: '', code: '', price: '', manufacturer: '', logoUrl: '', description: '', productUrl: '', productImage: '', size: '', qty: '', mfgDate: generateMfgDate(),
+  fontSizes: { product: 4.5, description: 3.5, code: 5, price: 5 },
 });
 const createInitialLabels = (count = 12) => Array.from({ length: count }, emptyLabel);
 const initialLabels = () => createInitialLabels(12);

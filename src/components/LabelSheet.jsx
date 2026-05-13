@@ -19,8 +19,19 @@ import QRCode from 'qrcode';
 import { generateMfgDate } from '../utils/mfgDate';
 import { getLayout, DEFAULT_LAYOUT } from '../utils/layoutConfig';
 
-const LABEL_FONT_FAMILY = 'Arial, Helvetica, sans-serif';
+const LABEL_FONT_FAMILY = 'Helvetica Neue, Helvetica, Arial, sans-serif';
 const MM_TO_PX = 96 / 25.4;
+
+// Font sizes configuration with print-optimized values
+const FONT_SIZES = {
+  product: { default: 4.5, min: 2, max: 8 },
+  description: { default: 3.5, min: 1.5, max: 6 },
+  code: { default: 5, min: 2, max: 9 },
+  price: { default: 5, min: 2, max: 9 },
+  footer: { default: 3.2, min: 1.5, max: 5 },
+};
+
+export { FONT_SIZES };
 
 // Generate QR code data URL (LRU cache — max 50 entries)
 const qrCache = new Map();
@@ -139,21 +150,28 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
     : productImage;
   const qrDataUrl = useQRCode(productUrl);
   const s = (pt) => `${compact ? pt * 0.78 : pt}pt`;
-  const B = '0.3mm solid #000';
-  const BD = '0.2mm solid #000';
+  const B = '0.25mm solid #1a1a1a';
+  const BD = '0.15mm solid #333';
   const [logoError, setLogoError] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  // Custom font sizes from label data
+  const fontSizes = label.fontSizes || {};
+  const productFontSize = fontSizes.product || (compact ? 3.5 : 4.5);
+  const descFontSize = fontSizes.description || (compact ? 2.8 : 3.5);
+  const codeFontSize = fontSizes.code || 5;
+  const priceFontSize = fontSizes.price || 5;
 
   const isEmpty = !code && !product && !price && !description;
   const hasProductImg = productImage && !imgError;
   const productLines = buildTextLines(product, {
-    fontSizePt: compact ? 3.5 : 4.5,
+    fontSizePt: productFontSize,
     fontWeight: 900,
     maxWidthMm: hasProductImg ? (compact ? 38 : 73) : (compact ? 48 : 84),
     maxLines: 2,
   });
   const descriptionLines = buildTextLines(description, {
-    fontSizePt: compact ? 2.8 : 3.5,
+    fontSizePt: descFontSize,
     fontWeight: 600,
     maxWidthMm: hasProductImg ? (compact ? 40 : 76) : (compact ? 50 : 88),
     maxLines: compact ? 2 : 3,
@@ -165,22 +183,23 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
       border: B, boxSizing: 'border-box',
       borderTop: (!isFirstRow && compact) ? 'none' : B,
       fontFamily: LABEL_FONT_FAMILY,
-      color: '#000', display: 'flex',
+      color: '#111', display: 'flex',
       background: '#fff',
       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
+      boxShadow: 'inset 0 0 0.1mm #f5f5f5',
     }}>
 
       {/* ── LEFT VERTICAL STRIP — Model Number ── */}
       <div style={{
         width: compact ? '4mm' : '5.5mm', flexShrink: 0, borderRight: B,
-        background: '#fff', color: '#000',
+        background: '#fafafa', color: '#111',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{
           transform: 'rotate(-90deg)',
           whiteSpace: 'nowrap',
-          fontSize: s(5), fontWeight: 900,
-          letterSpacing: '0.04em',
+          fontSize: s(codeFontSize), fontWeight: 900,
+          letterSpacing: '0.05em',
         }}>
           {code || (isEmpty ? '' : 'MODEL')}
         </span>
@@ -199,6 +218,7 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
           display: 'flex', alignItems: 'center',
           padding: compact ? '0.3mm 0.8mm' : '0.5mm 1.2mm',
           gap: compact ? '1mm' : '1.5mm',
+          borderBottom: '0.1mm solid #e5e5e5',
         }}>
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             {logoUrl && !logoError ? (
@@ -212,7 +232,7 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
             ) : (
               <span style={{
                 fontSize: s(10), fontWeight: 900,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
+                letterSpacing: '0.1em', textTransform: 'uppercase', color: '#222',
               }}>
                 {brand || (isEmpty ? '' : 'BRAND')}
               </span>
@@ -222,6 +242,7 @@ const LabelCell = memo(function LabelCell({ label, compact = false, isFirstRow =
             <img src={qrDataUrl} alt="QR" style={{
               width: compact ? '5.5mm' : '7mm', height: compact ? '5.5mm' : '7mm',
               objectFit: 'contain', flexShrink: 0,
+              opacity: 0.9,
             }} />
           )}
         </div>

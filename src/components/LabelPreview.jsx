@@ -115,13 +115,13 @@ export default function LabelPreview({
         // html-to-image uses browser's own rendering engine (SVG foreignObject)
         // — supports CSS Grid, flexbox, all properties natively
         const canvas = await toCanvas(sheet, {
-          pixelRatio: 3,
+          pixelRatio: 4,
           backgroundColor: '#ffffff',
           cacheBust: true,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
       }
 
       // Restore print-root to hidden
