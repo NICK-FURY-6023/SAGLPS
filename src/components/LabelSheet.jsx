@@ -23,7 +23,7 @@ import { generateMfgDate } from '../utils/mfgDate';
 import QRCode from 'qrcode';
 import { getLayout, DEFAULT_LAYOUT } from '../utils/layoutConfig';
 
-const LABEL_FONT_FAMILY = 'Helvetica Neue, Helvetica, Arial, sans-serif';
+const LABEL_FONT_FAMILY = 'Noto Sans, Arial, sans-serif';
 const MM_TO_PX = 96 / 25.4;
 
 // Font sizes configuration with print-optimized values
